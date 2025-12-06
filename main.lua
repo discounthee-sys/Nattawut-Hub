@@ -292,7 +292,7 @@ Window:SetTheme({
 })
 
 -- Toggle UI: เมื่อกดปุ่ม Cat จะเปิด/ปิดหน้าต่างที่สร้างโดย Library
-local uiVisible = true
+local uiVisible = end
 OpenBtn.MouseButton1Click:Connect(function()
     uiVisible = not uiVisible
     -- ลูปหา ScreenGui ของ Library แล้วสั่ง Enabled (หลายชื่อ fallback)
@@ -303,54 +303,6 @@ OpenBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- =========================
--- ใส่รูป (Cat) บนหน้าต่าง Library — ไม่แก้โครงหลัก แค่เพิ่ม ImageLabel ไว้ใน Window object (หาโดยเผื่อชื่อ)
--- =========================
-task.spawn(function()
-    task.wait(0.7) -- รอให้ Library สร้าง UI เสร็จ
-    local foundGui = nil
-    -- หา ScreenGui ที่น่าจะเป็น library (fallback หลายแบบ)
-    for _, g in ipairs(CoreGui:GetChildren()) do
-        if g:IsA("ScreenGui") then
-            local name = g.Name:lower()
-            if name:find("lates") or name:find("lytes") or name:find("window") or name:find("library") or name:find("ui") then
-                foundGui = g
-                break
-            end
-        end
-    end
-
-    if not foundGui then
-        -- ถ้าไม่เจอ ให้สร้าง Image ใน CoreGui (จะลอยอยู่) เพื่อให้พี่เห็นก่อน
-        local floatImg = Instance.new("ImageLabel")
-        floatImg.Name = "PLam_CatFloat"
-        floatImg.Parent = CoreGui
-        floatImg.Size = UDim2.new(0, 120, 0, 120)
-        floatImg.Position = UDim2.new(0.5, -60, 0.06, 0)
-        floatImg.BackgroundTransparency = 1
-        floatImg.Image = CAT_ICON_ID
-        local c = Instance.new("UICorner", floatImg); c.CornerRadius = UDim.new(0,18)
-        return
-    end
-
-    -- หา Frame หลักของ Window (ค้นหา descendant ที่น่าจะเป็น container)
-    local mainFrame = foundGui:FindFirstChildWhichIsA("Frame", true) or foundGui:FindFirstChild("Window") or foundGui:FindFirstChildWhichIsA("Frame")
-    if not mainFrame then
-        return
-    end
-
-    local img = Instance.new("ImageLabel")
-    img.Name = "PLam_CatHeader"
-    img.Parent = mainFrame
-    img.Size = UDim2.new(0, 110, 0, 110)
-    img.Position = UDim2.new(0.5, -55, 0, -80) -- อยู่บนเหนือหน้าต่าง
-    img.BackgroundTransparency = 1
-    img.Image = CAT_ICON_ID
-    img.ScaleType = Enum.ScaleType.Fit
-    local u = Instance.new("UICorner", img); u.CornerRadius = UDim.new(0,18)
-end)
-
--- =========================
 -- TAB: Main + ปุ่มวาร์ป 6 จุด
 -- =========================
 local Main = Window:AddTab({
