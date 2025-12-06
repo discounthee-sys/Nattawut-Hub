@@ -1,17 +1,22 @@
--- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
 
--- ป้องกันรันซ้ำ
 if CoreGui:FindFirstChild("PLam_MainUI") then return end
 
--- Asset IDs
-local SPLASH_ID = "rbxassetid://98294806019489"
-local UI_BTN_ID = "rbxassetid://129032539718649"
+-- สร้าง UI
+local FloatGui = Instance.new("ScreenGui")
+FloatGui.Name = "PLam_MainUI"
+FloatGui.Parent = CoreGui
 
--- Teleport positions (เรียงตามลำดับ)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0,400,0,480)
+MainFrame.Position = UDim2.new(0.5,-200,0.5,-240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+MainFrame.BackgroundTransparency = 0.3
+MainFrame.Parent = FloatGui
+
+-- Warp Buttons
 local TP_ORDER = {
     {"สถานที่ 1", Vector3.new(683.61, 3040.14, -1753.22)},
     {"สถานที่ 2", Vector3.new(751.34, 3033.49, -1576.00)},
@@ -21,20 +26,72 @@ local TP_ORDER = {
     {"สถานที่ 6", Vector3.new(381.30, 2983.88, 15830.59)},
 }
 
--- Helper
+local yOffset = 20
 local function getHRP()
-    local char = LocalPlayer.Character
-    if char then
-        return char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart",5)
-    end
-    return nil
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:WaitForChild("HumanoidRootPart", 5)
 end
 
--- =====================
--- UI หลัก
--- =====================
-local FloatGui = Instance.new("ScreenGui")
-FloatGui.Name = "PLam_MainUI"
+for i=1,#TP_ORDER do
+    local name, vec = TP_ORDER[i][1], TP_ORDER[i][2]
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40,0,30)
+    btn.Position = UDim2.new(0,20,0,yOffset)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    btn.Text = name
+    btn.Parent = MainFrame
+
+    btn.MouseButton1Click:Connect(function()
+        local hrp = getHRP()
+        if hrp then hrp.CFrame = CFrame.new(vec) end
+    end)
+    yOffset = yOffset + 40
+end
+
+-- Speed Button
+local speedOn = false
+local defaultSpeed = 16
+local speedBtn = Instance.new("TextButton")
+speedBtn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40,0,30)
+speedBtn.Position = UDim2.new(0,20,0,yOffset)
+speedBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+speedBtn.TextColor3 = Color3.fromRGB(255,255,255)
+speedBtn.Font = Enum.Font.SourceSansBold
+speedBtn.TextSize = 18
+speedBtn.Text = "Speed"
+speedBtn.Parent = MainFrame
+
+speedBtn.MouseButton1Click:Connect(function()
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") or getHumanoid()
+    if humanoid then
+        if speedOn then
+            humanoid.WalkSpeed = defaultSpeed
+        else
+            humanoid.WalkSpeed = 30
+        end
+        speedOn = not speedOn
+    end
+end)
+
+yOffset = yOffset + 40
+
+-- Fly Button
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40,0,30)
+flyBtn.Position = UDim2.new(0,20,0,yOffset)
+flyBtn.BackgroundColor3 = Color3.fromRGB(255,85,0)
+flyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+flyBtn.Font = Enum.Font.SourceSansBold
+flyBtn.TextSize = 18
+flyBtn.Text = "Fly"
+flyBtn.Parent = MainFrame
+
+flyBtn.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+end)FloatGui.Name = "PLam_MainUI"
 FloatGui.ResetOnSpawn = false
 FloatGui.Parent = CoreGui
 
