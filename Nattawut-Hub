@@ -1,4 +1,4 @@
--- FINAL (ไม่มี Auto-Return) สำหรับ P' Lam — วางแล้วรันได้ทันที
+-- FINAL (รวมทุกอย่าง, ไม่มี Auto-Return) สำหรับ P' Lam
 -- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -6,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 
--- Teleport positions (จากพี่)
+-- Teleport positions
 local TP_POINTS = {
     ["สถานที่ 1"] = Vector3.new(683.61, 3040.14, -1753.22),
     ["สถานที่ 2"] = Vector3.new(751.34, 3033.49, -1576.00),
@@ -24,7 +24,7 @@ local CAT_ICON_ID = "rbxassetid://129032539718649"
 local function getHRP()
     local char = LocalPlayer.Character
     if char then
-        return char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart", 5) 
+        return char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart",5)
     end
     return nil
 end
@@ -35,6 +35,165 @@ end
 do
     local IntroGui = Instance.new("ScreenGui")
     IntroGui.Name = "PLam_Intro"
+    IntroGui.ResetOnSpawn = false
+    IntroGui.Parent = CoreGui
+
+    local Img = Instance.new("ImageLabel", IntroGui)
+    Img.Size = UDim2.new(1,0,1,0)
+    Img.Position = UDim2.new(0,0,0,0)
+    Img.BackgroundTransparency = 1
+    Img.Image = SPLASH_ID
+    Img.ScaleType = Enum.ScaleType.Fit
+    Img.ImageTransparency = 0
+
+    task.wait(3)
+
+    local steps = 40
+    for i = 1, steps do
+        Img.ImageTransparency = i/steps
+        task.wait(0.02)
+    end
+
+    IntroGui:Destroy()
+end
+
+-- =========================
+-- ปุ่ม Open/Close UI
+-- =========================
+local OpenGui = Instance.new("ScreenGui")
+OpenGui.Name = "PLam_OpenBtnGui"
+OpenGui.ResetOnSpawn = false
+OpenGui.Parent = CoreGui
+
+local OpenBtn = Instance.new("ImageButton")
+OpenBtn.Name = "PLam_OpenBtn"
+OpenBtn.Parent = OpenGui
+OpenBtn.Size = UDim2.new(0,64,0,64)
+OpenBtn.Position = UDim2.new(0.04,0,0.5,-32)
+OpenBtn.BackgroundTransparency = 0
+OpenBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+OpenBtn.Image = "" -- ว่างเพราะ Cat ไปไว้ใน UI
+OpenBtn.AutoButtonColor = true
+
+local corner = Instance.new("UICorner", OpenBtn)
+corner.CornerRadius = UDim.new(0,14)
+
+-- Dragging logic
+local dragging, dragStart, startPos
+OpenBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = OpenBtn.Position
+    end
+end)
+OpenBtn.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        OpenBtn.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        dragging = false
+    end
+end)
+
+-- =========================
+-- Load Library (Lates)
+-- =========================
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/lxte/lates-lib/main/Main.lua"))()
+local Window = Library:CreateWindow({
+    Title = "P' Lam Hub",
+    Theme = "Dark",
+    Size = UDim2.fromOffset(570,370),
+    Transparency = 0.15,
+    Blurring = false,
+    MinimizeKeybind = Enum.KeyCode.LeftAlt,
+})
+
+-- =========================
+-- Toggle UI
+-- =========================
+local uiVisible = true
+OpenBtn.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+    local foundGui = nil
+    for _, g in ipairs(CoreGui:GetChildren()) do
+        if g:IsA("ScreenGui") and g.Name:find("Lates") then
+            foundGui = g
+            break
+        end
+    end
+    if foundGui then
+        foundGui.Enabled = uiVisible
+    end
+end)
+
+-- =========================
+-- ใส่รูป Cat ใน Library UI
+-- =========================
+task.spawn(function()
+    task.wait(0.7)
+    local foundGui = nil
+    for _, g in ipairs(CoreGui:GetChildren()) do
+        if g:IsA("ScreenGui") and g.Name:find("Lates") then
+            foundGui = g
+            break
+        end
+    end
+    if not foundGui then return end
+
+    local mainFrame = foundGui:FindFirstChildWhichIsA("Frame", true) or foundGui:FindFirstChild("Window")
+    if not mainFrame then return end
+
+    local img = Instance.new("ImageLabel")
+    img.Name = "PLam_CatHeader"
+    img.Parent = mainFrame
+    img.Size = UDim2.new(0,110,0,110)
+    img.Position = UDim2.new(0.5,-55,0,-80)
+    img.BackgroundTransparency = 1
+    img.Image = CAT_ICON_ID
+    img.ScaleType = Enum.ScaleType.Fit
+    local u = Instance.new("UICorner", img)
+    u.CornerRadius = UDim.new(0,18)
+end)
+
+-- =========================
+-- TAB: Main + ปุ่มวาร์ป 6 จุด
+-- =========================
+local Main = Window:AddTab({
+    Title = "Main",
+    Section = "Main",
+    Icon = "rbxassetid://11963373994"
+})
+
+local function doTeleportTo(vec)
+    local hrp = getHRP()
+    if hrp then
+        pcall(function()
+            hrp.CFrame = CFrame.new(vec)
+        end)
+    else
+        pcall(function()
+            LocalPlayer:Kick("Teleport failed: character not ready.")
+        end)
+    end
+end
+
+for name, vec in pairs(TP_POINTS) do
+    Window:AddButton({
+        Title = name,
+        Description = "Warp to location",
+        Tab = Main,
+        Callback = function()
+            doTeleportTo(vec)
+        end
+    })
+end    IntroGui.Name = "PLam_Intro"
     IntroGui.ResetOnSpawn = false
     IntroGui.Parent = CoreGui
 
@@ -133,7 +292,7 @@ Window:SetTheme({
 })
 
 -- Toggle UI: เมื่อกดปุ่ม Cat จะเปิด/ปิดหน้าต่างที่สร้างโดย Library
-local uiVisible = true
+local uiVisible = end
 OpenBtn.MouseButton1Click:Connect(function()
     uiVisible = not uiVisible
     -- ลูปหา ScreenGui ของ Library แล้วสั่ง Enabled (หลายชื่อ fallback)
@@ -144,54 +303,6 @@ OpenBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- =========================
--- ใส่รูป (Cat) บนหน้าต่าง Library — ไม่แก้โครงหลัก แค่เพิ่ม ImageLabel ไว้ใน Window object (หาโดยเผื่อชื่อ)
--- =========================
-task.spawn(function()
-    task.wait(0.7) -- รอให้ Library สร้าง UI เสร็จ
-    local foundGui = nil
-    -- หา ScreenGui ที่น่าจะเป็น library (fallback หลายแบบ)
-    for _, g in ipairs(CoreGui:GetChildren()) do
-        if g:IsA("ScreenGui") then
-            local name = g.Name:lower()
-            if name:find("lates") or name:find("lytes") or name:find("window") or name:find("library") or name:find("ui") then
-                foundGui = g
-                break
-            end
-        end
-    end
-
-    if not foundGui then
-        -- ถ้าไม่เจอ ให้สร้าง Image ใน CoreGui (จะลอยอยู่) เพื่อให้พี่เห็นก่อน
-        local floatImg = Instance.new("ImageLabel")
-        floatImg.Name = "PLam_CatFloat"
-        floatImg.Parent = CoreGui
-        floatImg.Size = UDim2.new(0, 120, 0, 120)
-        floatImg.Position = UDim2.new(0.5, -60, 0.06, 0)
-        floatImg.BackgroundTransparency = 1
-        floatImg.Image = CAT_ICON_ID
-        local c = Instance.new("UICorner", floatImg); c.CornerRadius = UDim.new(0,18)
-        return
-    end
-
-    -- หา Frame หลักของ Window (ค้นหา descendant ที่น่าจะเป็น container)
-    local mainFrame = foundGui:FindFirstChildWhichIsA("Frame", true) or foundGui:FindFirstChild("Window") or foundGui:FindFirstChildWhichIsA("Frame")
-    if not mainFrame then
-        return
-    end
-
-    local img = Instance.new("ImageLabel")
-    img.Name = "PLam_CatHeader"
-    img.Parent = mainFrame
-    img.Size = UDim2.new(0, 110, 0, 110)
-    img.Position = UDim2.new(0.5, -55, 0, -80) -- อยู่บนเหนือหน้าต่าง
-    img.BackgroundTransparency = 1
-    img.Image = CAT_ICON_ID
-    img.ScaleType = Enum.ScaleType.Fit
-    local u = Instance.new("UICorner", img); u.CornerRadius = UDim.new(0,18)
-end)
-
--- =========================
 -- TAB: Main + ปุ่มวาร์ป 6 จุด
 -- =========================
 local Main = Window:AddTab({
