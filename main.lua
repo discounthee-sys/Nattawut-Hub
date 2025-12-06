@@ -1,26 +1,27 @@
--- FINAL (รวมทุกอย่าง, ไม่มี Auto-Return) สำหรับ P' Lam
 -- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- Teleport positions
-local TP_POINTS = {
-    ["สถานที่ 1"] = Vector3.new(683.61, 3040.14, -1753.22),
-    ["สถานที่ 2"] = Vector3.new(751.34, 3033.49, -1576.00),
-    ["สถานที่ 3"] = Vector3.new(710.85, 3033.63, -1393.17),
-    ["สถานที่ 4"] = Vector3.new(766.19, 4134.76, -17420.10),
-    ["สถานที่ 5"] = Vector3.new(768.69, 2819.81, 9828.04),
-    ["สถานที่ 6"] = Vector3.new(381.30, 2983.88, 15830.59),
-}
+-- ป้องกันรันซ้ำ
+if CoreGui:FindFirstChild("PLam_MainUI") then return end
 
 -- Asset IDs
 local SPLASH_ID = "rbxassetid://98294806019489"
-local CAT_ICON_ID = "rbxassetid://129032539718649"
+local UI_BTN_ID = "rbxassetid://129032539718649"
 
--- Helper: get HumanoidRootPart safely
+-- Teleport positions (เรียงตามลำดับ)
+local TP_ORDER = {
+    {"สถานที่ 1", Vector3.new(683.61, 3040.14, -1753.22)},
+    {"สถานที่ 2", Vector3.new(751.34, 3033.49, -1576.00)},
+    {"สถานที่ 3", Vector3.new(710.85, 3033.63, -1393.17)},
+    {"สถานที่ 4", Vector3.new(766.19, 4134.76, -17420.10)},
+    {"สถานที่ 5", Vector3.new(768.69, 2819.81, 9828.04)},
+    {"สถานที่ 6", Vector3.new(381.30, 2983.88, 15830.59)},
+}
+
+-- Helper
 local function getHRP()
     local char = LocalPlayer.Character
     if char then
@@ -29,6 +30,143 @@ local function getHRP()
     return nil
 end
 
+-- =====================
+-- UI หลัก
+-- =====================
+local FloatGui = Instance.new("ScreenGui")
+FloatGui.Name = "PLam_MainUI"
+FloatGui.ResetOnSpawn = false
+FloatGui.Parent = CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0,400,0,480)
+MainFrame.Position = UDim2.new(0.5,-200,0.5,-240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+MainFrame.BackgroundTransparency = 0.3
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = FloatGui
+
+local mainCorner = Instance.new("UICorner", MainFrame)
+mainCorner.CornerRadius = UDim.new(0,18)
+
+-- =====================
+-- Float Button
+-- =====================
+local FloatBtn = Instance.new("ImageButton")
+FloatBtn.Size = UDim2.new(0,64,0,64)
+FloatBtn.Position = UDim2.new(0.05,0,0.5,-32)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+FloatBtn.BackgroundTransparency = 0
+FloatBtn.Image = UI_BTN_ID
+FloatBtn.ScaleType = Enum.ScaleType.Fit
+FloatBtn.AutoButtonColor = true
+FloatBtn.Parent = FloatGui
+
+local btnCorner = Instance.new("UICorner", FloatBtn)
+btnCorner.CornerRadius = UDim.new(0,10)
+
+local dragging, dragStart, startPos
+FloatBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = FloatBtn.Position
+    end
+end)
+FloatBtn.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        FloatBtn.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if dragging then dragging = false end
+end)
+
+FloatBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- =====================
+-- Warp Buttons เรียง
+-- =====================
+local yOffset = 20
+for i = 1, #TP_ORDER do
+    local name, vec = TP_ORDER[i][1], TP_ORDER[i][2]
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40, 0,30)
+    btn.Position = UDim2.new(0,20,0,yOffset)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.TextSize = 18
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = name
+    btn.Parent = MainFrame
+
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0,10)
+
+    btn.MouseButton1Click:Connect(function()
+        local hrp = getHRP()
+        if hrp then
+            hrp.CFrame = CFrame.new(vec)
+        end
+    end)
+
+    yOffset = yOffset + 40
+end
+
+-- =====================
+-- Speed & Fly Buttons
+-- =====================
+local speedOn = false
+local defaultSpeed = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") and LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed or 16
+local speedBtn = Instance.new("TextButton")
+speedBtn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40, 0,30)
+speedBtn.Position = UDim2.new(0,20,0,yOffset)
+speedBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+speedBtn.TextColor3 = Color3.fromRGB(255,255,255)
+speedBtn.TextSize = 18
+speedBtn.Font = Enum.Font.SourceSansBold
+speedBtn.Text = "Speed"
+speedBtn.Parent = MainFrame
+local corner = Instance.new("UICorner", speedBtn)
+corner.CornerRadius = UDim.new(0,10)
+
+speedBtn.MouseButton1Click:Connect(function()
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        if not speedOn then
+            humanoid.WalkSpeed = 30
+            speedOn = true
+        else
+            humanoid.WalkSpeed = defaultSpeed
+            speedOn = false
+        end
+    end
+end)
+
+yOffset = yOffset + 40
+
+-- Fly Button
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40, 0,30)
+flyBtn.Position = UDim2.new(0,20,0,yOffset)
+flyBtn.BackgroundColor3 = Color3.fromRGB(255,85,0)
+flyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+flyBtn.TextSize = 18
+flyBtn.Font = Enum.Font.SourceSansBold
+flyBtn.Text = "Fly"
+flyBtn.Parent = MainFrame
+local corner2 = Instance.new("UICorner", flyBtn)
+corner2.CornerRadius = UDim.new(0,10)
+
+flyBtn.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+end)
 -- =========================
 -- Intro Splash (fullscreen, hold, fade)
 -- =========================
