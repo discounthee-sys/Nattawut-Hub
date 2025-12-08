@@ -1,40 +1,154 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
+--// Services
+local UIS = game:GetService("UserInputService")
 
-if CoreGui:FindFirstChild("PLam_MainUI") then return end
+--// UI เล็ก (Toggle)
+local smallIcon = "rbxassetid://100401819662162"
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
 
--- สร้าง UI
-local FloatGui = Instance.new("ScreenGui")
-FloatGui.Name = "PLam_MainUI"
-FloatGui.Parent = CoreGui
+local Toggle = Instance.new("ImageButton", ScreenGui)
+Toggle.Image = smallIcon
+Toggle.Size = UDim2.new(0, 70, 0, 70)
+Toggle.Position = UDim2.new(0, 20, 0, 200)
+Toggle.BackgroundTransparency = 0.2
+Toggle.BackgroundColor3 = Color3.fromRGB(25,25,25)
+local ToggleCorner = Instance.new("UICorner", Toggle)
+ToggleCorner.CornerRadius = UDim.new(0,16)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,400,0,480)
-MainFrame.Position = UDim2.new(0.5,-200,0.5,-240)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-MainFrame.BackgroundTransparency = 0.3
-MainFrame.Parent = FloatGui
+-- ให้ UI เล็กลากได้
+local draggingBtn = false
+local dragStartBtn, startPosBtn
+Toggle.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingBtn = true
+		dragStartBtn = input.Position
+		startPosBtn = Toggle.Position
+	end
+end)
+Toggle.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingBtn = false
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if draggingBtn and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStartBtn
+		Toggle.Position = UDim2.new(startPosBtn.X.Scale, startPosBtn.X.Offset + delta.X,
+			startPosBtn.Y.Scale, startPosBtn.Y.Offset + delta.Y)
+	end
+end)
 
--- Warp Buttons
-local TP_ORDER = {
-    {"สถานที่ 1", Vector3.new(683.61, 3040.14, -1753.22)},
-    {"สถานที่ 2", Vector3.new(751.34, 3033.49, -1576.00)},
-    {"สถานที่ 3", Vector3.new(710.85, 3033.63, -1393.17)},
-    {"สถานที่ 4", Vector3.new(766.19, 4134.76, -17420.10)},
-    {"สถานที่ 5", Vector3.new(768.69, 2819.81, 9828.04)},
-    {"สถานที่ 6", Vector3.new(381.30, 2983.88, 15830.59)},
-}
+--------------------------------------------------------------------
+-- UI ใหญ่ (แนวนอน + รูปพื้นหลัง)
+--------------------------------------------------------------------
+local MainUI = Instance.new("Frame", ScreenGui)
+MainUI.Size = UDim2.new(0, 600, 0, 280)
+MainUI.Position = UDim2.new(0.5, -300, 0.5, -140)
+MainUI.BackgroundTransparency = 0
+MainUI.Visible = false
+MainUI.ClipsDescendants = true
 
-local yOffset = 20
-local function getHRP()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart", 5)
+local BG = Instance.new("ImageLabel", MainUI)
+BG.Image = "rbxassetid://82760345395309"
+BG.Size = UDim2.new(1,0,1,0)
+BG.BackgroundTransparency = 0
+BG.ScaleType = Enum.ScaleType.Stretch
+local BGCorner = Instance.new("UICorner", BG)
+BGCorner.CornerRadius = UDim.new(0,14)
+
+-- กรอบ Menu ด้านซ้าย
+local MenuFrame = Instance.new("Frame", MainUI)
+MenuFrame.Size = UDim2.new(0,120,1,0)
+MenuFrame.Position = UDim2.new(0,0,0,0)
+MenuFrame.BackgroundColor3 = Color3.fromRGB(50,120,220)
+MenuFrame.BackgroundTransparency = 0.4
+local MenuCorner = Instance.new("UICorner", MenuFrame)
+MenuCorner.CornerRadius = UDim.new(0,8)
+
+-- พื้นที่ฟังก์ชันด้านขวา + ListLayout
+local FuncFrame = Instance.new("Frame", MainUI)
+FuncFrame.Size = UDim2.new(1,-120,1,0)
+FuncFrame.Position = UDim2.new(0,120,0,0)
+FuncFrame.BackgroundTransparency = 1
+local Layout = Instance.new("UIListLayout", FuncFrame)
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0,5)
+
+-- UI ใหญ่ลากได้
+local Drag = Instance.new("Frame", MainUI)
+Drag.Size = UDim2.new(1,0,0,35)
+Drag.BackgroundTransparency = 1
+local draggingUI = false
+local dragStartUI, startPosUI
+Drag.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingUI = true
+		dragStartUI = input.Position
+		startPosUI = MainUI.Position
+	end
+end)
+Drag.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingUI = false
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if draggingUI and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStartUI
+		MainUI.Position = UDim2.new(startPosUI.X.Scale, startPosUI.X.Offset + delta.X,
+			startPosUI.Y.Scale, startPosUI.Y.Offset + delta.Y)
+	end
+end)
+
+--------------------------------------------------------------------
+-- Toggle เล็กเปิด–ปิด UI ใหญ่
+--------------------------------------------------------------------
+local canClick = true
+Toggle.MouseButton1Click:Connect(function()
+	if not canClick then return end
+	canClick = false
+	MainUI.Visible = not MainUI.Visible
+	task.delay(0.25, function() canClick = true end)
+end)
+
+--------------------------------------------------------------------
+-- ฟังก์ชันเพิ่มเมนู
+--------------------------------------------------------------------
+local menuCount = 0
+local function addMenu(name, funcs)
+	menuCount = menuCount + 1
+	local Btn = Instance.new("TextButton", MenuFrame)
+	Btn.Size = UDim2.new(1,0,0,35)
+	Btn.Position = UDim2.new(0,0,(menuCount-1)*35,0)
+	Btn.Text = name
+	Btn.BackgroundTransparency = 1
+	Btn.TextColor3 = Color3.fromRGB(255,255,255)
+	Btn.Font = Enum.Font.GothamBold
+	Btn.TextSize = 18
+
+	Btn.MouseButton1Click:Connect(function()
+		-- เคลียร์ฟังก์ชันเก่า
+		for i,v in ipairs(FuncFrame:GetChildren()) do
+			if v:IsA("TextButton") then v:Destroy() end
+		end
+		-- เพิ่มฟังก์ชันใหม่
+		for i,f in ipairs(funcs) do
+			local FBtn = Instance.new("TextButton", FuncFrame)
+			FBtn.Size = UDim2.new(1,0,0,35)
+			FBtn.BackgroundColor3 = Color3.fromRGB(80,180,255)
+			FBtn.BackgroundTransparency = 0.3
+			FBtn.TextColor3 = Color3.fromRGB(255,255,255)
+			FBtn.Font = Enum.Font.Gotham
+			FBtn.TextSize = 16
+			FBtn.Text = f
+		end
+	end)
 end
 
-for i=1,#TP_ORDER do
-    local name, vec = TP_ORDER[i][1], TP_ORDER[i][2]
-    local btn = Instance.new("TextButton")
+-- ตัวอย่างเมนู
+addMenu("Mumu", {"ออโต้ฟาร์ม","ปุ่มปิดปิด","อื่นๆ"})
+addMenu("Test", {"ฟังก์ชันทดสอบ1","ฟังก์ชันทดสอบ2"})    local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40,0,30)
     btn.Position = UDim2.new(0,20,0,yOffset)
     btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
