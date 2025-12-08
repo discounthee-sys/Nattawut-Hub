@@ -1,23 +1,28 @@
 --// Services
 local UIS = game:GetService("UserInputService")
 
---// UI เล็ก (Toggle)
+--// Assets
 local smallIcon = "rbxassetid://100401819662162"
+local bigBG = "rbxassetid://82760345395309"
+
+--// ScreenGui
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.ResetOnSpawn = false
 
+--------------------------------------------------------------------
+-- UI เล็ก (Toggle)
+--------------------------------------------------------------------
 local Toggle = Instance.new("ImageButton", ScreenGui)
 Toggle.Image = smallIcon
-Toggle.Size = UDim2.new(0,70,0,70)
-Toggle.Position = UDim2.new(0,20,0,200)
+Toggle.Size = UDim2.new(0, 70, 0, 70)
+Toggle.Position = UDim2.new(0, 20, 0, 200)
 Toggle.BackgroundTransparency = 0.2
 Toggle.BackgroundColor3 = Color3.fromRGB(25,25,25)
 local ToggleCorner = Instance.new("UICorner", Toggle)
 ToggleCorner.CornerRadius = UDim.new(0,16)
 
--- ลาก UI เล็ก
-local draggingBtn = false
-local dragStartBtn, startPosBtn
+-- Drag UI เล็ก
+local draggingBtn, dragStartBtn, startPosBtn = false, nil, nil
 Toggle.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		draggingBtn = true
@@ -33,307 +38,139 @@ end)
 UIS.InputChanged:Connect(function(input)
 	if draggingBtn and input.UserInputType == Enum.UserInputType.MouseMovement then
 		local delta = input.Position - dragStartBtn
-		Toggle.Position = UDim2.new(startPosBtn.X.Scale,startPosBtn.X.Offset+delta.X,
-			startPosBtn.Y.Scale,startPosBtn.Y.Offset+delta.Y)
+		Toggle.Position = UDim2.new(startPosBtn.X.Scale, startPosBtn.X.Offset + delta.X,
+			startPosBtn.Y.Scale, startPosBtn.Y.Offset + delta.Y)
 	end
 end)
 
 --------------------------------------------------------------------
--- UI ใหญ่ (จาก Library ของพี่)
+-- UI ใหญ่หลัก (MainUI)
 --------------------------------------------------------------------
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/lxte/lates-lib/main/Main.lua"))()
-local Window = Library:CreateWindow({
-	Title = "Nattawut Hub",
-	Theme = "Dark",
-	Size = UDim2.fromOffset(600,350),
-	Transparency = 0.2,
-	Blurring = true,
-	MinimizeKeybind = Enum.KeyCode.LeftAlt,
-})
+local MainUI = Instance.new("Frame", ScreenGui)
+MainUI.Size = UDim2.new(0, 600, 0, 350)
+MainUI.Position = UDim2.new(0.5, -300, 0.5, -175)
+MainUI.BackgroundTransparency = 0
+MainUI.Visible = false
+MainUI.ClipsDescendants = true
 
--- ตั้งธีม
-Window:SetTheme({
-	Dark = {
-		Primary = Color3.fromRGB(30,30,30),
-		Secondary = Color3.fromRGB(35,35,35),
-		Component = Color3.fromRGB(40,40,40),
-		Interactables = Color3.fromRGB(45,45,45),
-		Tab = Color3.fromRGB(200,200,200),
-		Title = Color3.fromRGB(240,240,240),
-		Description = Color3.fromRGB(200,200,200),
-		Shadow = Color3.fromRGB(0,0,0),
-		Outline = Color3.fromRGB(40,40,40),
-		Icon = Color3.fromRGB(220,220,220),
-	}
-})
-
--- เพิ่ม Tab และ Section (ตัวอย่าง)
-local Main = Window:AddTab({Title="Main", Section="Main", Icon="rbxassetid://11963373994"})
-Window:AddSection({Name="Functions", Tab=Main})
-Window:AddToggle({
-	Title="Example Function",
-	Description="ฟังก์ชันตัวอย่าง",
-	Tab=Main,
-	Callback=function(state)
-		print("Function state:", state)
-	end
-})
-
--- เพิ่ม Settings
-local Settings = Window:AddTab({Title="Settings", Section="Settings"})
-Window:AddSlider({
-	Title="UI Transparency",
-	Description="ปรับความโปร่ง",
-	Tab=Settings,
-	AllowDecimals=true,
-	MaxValue=1,
-	Callback=function(val)
-		Window:SetSetting("Transparency", val)
-	end
-})
-
--- เพิ่มรูปพื้นหลังพี่หลามใน Frame ของ Library
-local BG = Instance.new("ImageLabel", Window:GetContent())
-BG.Image = "rbxassetid://82760345395309"
+local BG = Instance.new("ImageLabel", MainUI)
+BG.Image = bigBG
 BG.Size = UDim2.new(1,0,1,0)
 BG.BackgroundTransparency = 0
 BG.ScaleType = Enum.ScaleType.Stretch
 local BGCorner = Instance.new("UICorner", BG)
 BGCorner.CornerRadius = UDim.new(0,14)
-BG.ZIndex = 0 -- ให้ BG อยู่ด้านหลัง
 
---// Toggle เปิด–ปิด UI ใหญ่
+-- Drag UI ใหญ่
+local Drag = Instance.new("Frame", MainUI)
+Drag.Size = UDim2.new(1,0,0,35)
+Drag.BackgroundTransparency = 1
+local draggingUI, dragStartUI, startPosUI = false, nil, nil
+Drag.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingUI = true
+		dragStartUI = input.Position
+		startPosUI = MainUI.Position
+	end
+end)
+Drag.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingUI = false
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if draggingUI and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStartUI
+		MainUI.Position = UDim2.new(startPosUI.X.Scale, startPosUI.X.Offset + delta.X,
+			startPosUI.Y.Scale, startPosUI.Y.Offset + delta.Y)
+	end
+end)
+
+--------------------------------------------------------------------
+-- Toggle UI เล็กเปิด/ปิด MainUI
+--------------------------------------------------------------------
 local canClick = true
 Toggle.MouseButton1Click:Connect(function()
 	if not canClick then return end
 	canClick = false
-	Window:Toggle() -- สลับเปิด–ปิด Library
-	task.delay(0.25,function() canClick=true end)
-end)osition = UDim2.new(0,20,0,yOffset)
-speedBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-speedBtn.TextColor3 = Color3.fromRGB(255,255,255)
-speedBtn.TextSize = 18
-speedBtn.Font = Enum.Font.SourceSansBold
-speedBtn.Text = "Speed"
-speedBtn.Parent = MainFrame
-local corner = Instance.new("UICorner", speedBtn)
-corner.CornerRadius = UDim.new(0,10)
 
-speedBtn.MouseButton1Click:Connect(function()
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        if not speedOn then
-            humanoid.WalkSpeed = 30
-            speedOn = true
-        else
-            humanoid.WalkSpeed = defaultSpeed
-            speedOn = false
-        end
-    end
+	MainUI.Visible = not MainUI.Visible
+
+	task.delay(0.25, function()
+		canClick = true
+	end)
 end)
 
-yOffset = yOffset + 40
+--------------------------------------------------------------------
+-- ตัวเลือกปุ่มใน MainUI
+--------------------------------------------------------------------
+local OptionsFrame = Instance.new("Frame", MainUI)
+OptionsFrame.Size = UDim2.new(1, -20, 1, -50)
+OptionsFrame.Position = UDim2.new(0,10,0,40)
+OptionsFrame.BackgroundTransparency = 1
 
--- Fly Button
-local flyBtn = Instance.new("TextButton")
-flyBtn.Size = UDim2.new(0, MainFrame.Size.X.Offset-40, 0,30)
-flyBtn.Position = UDim2.new(0,20,0,yOffset)
-flyBtn.BackgroundColor3 = Color3.fromRGB(255,85,0)
-flyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-flyBtn.TextSize = 18
-flyBtn.Font = Enum.Font.SourceSansBold
-flyBtn.Text = "Fly"
-flyBtn.Parent = MainFrame
-local corner2 = Instance.new("UICorner", flyBtn)
-corner2.CornerRadius = UDim.new(0,10)
+local OptionBtn = Instance.new("TextButton", OptionsFrame)
+OptionBtn.Size = UDim2.new(0, 120, 0, 40)
+OptionBtn.Position = UDim2.new(0, 10, 0, 10)
+OptionBtn.Text = "ไปหน้า SubUI"
+OptionBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+local OptionCorner = Instance.new("UICorner", OptionBtn)
+OptionCorner.CornerRadius = UDim.new(0,8)
 
-flyBtn.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+--------------------------------------------------------------------
+-- SubUI (เท่ากับ MainUI แต่สีขาว)
+--------------------------------------------------------------------
+local SubUI = Instance.new("Frame", ScreenGui)
+SubUI.Size = MainUI.Size
+SubUI.Position = MainUI.Position
+SubUI.BackgroundColor3 = Color3.fromRGB(255,255,255)
+SubUI.Visible = false
+SubUI.ClipsDescendants = true
+
+-- Drag SubUI
+local SubDrag = Instance.new("Frame", SubUI)
+SubDrag.Size = UDim2.new(1,0,0,35)
+SubDrag.BackgroundTransparency = 1
+local draggingSub, dragStartSub, startPosSub = false, nil, nil
+SubDrag.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingSub = true
+		dragStartSub = input.Position
+		startPosSub = SubUI.Position
+	end
 end)
--- =========================
--- Intro Splash (fullscreen, hold, fade)
--- =========================
-do
-    local IntroGui = Instance.new("ScreenGui")
-    IntroGui.Name = "PLam_Intro"
-    IntroGui.ResetOnSpawn = false
-    IntroGui.Parent = CoreGui
-
-    local Img = Instance.new("ImageLabel", IntroGui)
-    Img.Size = UDim2.new(1,0,1,0)
-    Img.Position = UDim2.new(0,0,0,0)
-    Img.BackgroundTransparency = 1
-    Img.Image = SPLASH_ID
-    Img.ScaleType = Enum.ScaleType.Fit
-    Img.ImageTransparency = 0
-
-    task.wait(3)
-
-    local steps = 40
-    for i = 1, steps do
-        Img.ImageTransparency = i/steps
-        task.wait(0.02)
-    end
-
-    IntroGui:Destroy()
-end
-
--- =========================
--- ปุ่ม Open/Close UI
--- =========================
-local OpenGui = Instance.new("ScreenGui")
-OpenGui.Name = "PLam_OpenBtnGui"
-OpenGui.ResetOnSpawn = false
-OpenGui.Parent = CoreGui
-
-local OpenBtn = Instance.new("ImageButton")
-OpenBtn.Name = "PLam_OpenBtn"
-OpenBtn.Parent = OpenGui
-OpenBtn.Size = UDim2.new(0,64,0,64)
-OpenBtn.Position = UDim2.new(0.04,0,0.5,-32)
-OpenBtn.BackgroundTransparency = 0
-OpenBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-OpenBtn.Image = "" -- ว่างเพราะ Cat ไปไว้ใน UI
-OpenBtn.AutoButtonColor = true
-
-local corner = Instance.new("UICorner", OpenBtn)
-corner.CornerRadius = UDim.new(0,14)
-
--- Dragging logic
-local dragging, dragStart, startPos
-OpenBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = OpenBtn.Position
-    end
+SubDrag.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		draggingSub = false
+	end
 end)
-OpenBtn.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        OpenBtn.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        dragging = false
-    end
+UIS.InputChanged:Connect(function(input)
+	if draggingSub and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStartSub
+		SubUI.Position = UDim2.new(startPosSub.X.Scale, startPosSub.X.Offset + delta.X,
+			startPosSub.Y.Scale, startPosSub.Y.Offset + delta.Y)
+	end
 end)
 
--- =========================
--- Load Library (Lates)
--- =========================
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/lxte/lates-lib/main/Main.lua"))()
-local Window = Library:CreateWindow({
-    Title = "P' Lam Hub",
-    Theme = "Dark",
-    Size = UDim2.fromOffset(570,370),
-    Transparency = 0.15,
-    Blurring = false,
-    MinimizeKeybind = Enum.KeyCode.LeftAlt,
-})
+-- ปุ่มย้อนกลับ SubUI -> MainUI
+local BackBtn = Instance.new("TextButton", SubUI)
+BackBtn.Size = UDim2.new(0, 100, 0, 30)
+BackBtn.Position = UDim2.new(0, 10, 0, 10)
+BackBtn.Text = "กลับ"
+BackBtn.BackgroundColor3 = Color3.fromRGB(200,200,200)
+local BackCorner = Instance.new("UICorner", BackBtn)
+BackCorner.CornerRadius = UDim.new(0,6)
 
--- =========================
--- Toggle UI
--- =========================
-local uiVisible = true
-OpenBtn.MouseButton1Click:Connect(function()
-    uiVisible = not uiVisible
-    local foundGui = nil
-    for _, g in ipairs(CoreGui:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name:find("Lates") then
-            foundGui = g
-            break
-        end
-    end
-    if foundGui then
-        foundGui.Enabled = uiVisible
-    end
+BackBtn.MouseButton1Click:Connect(function()
+	SubUI.Visible = false
+	MainUI.Visible = true
 end)
 
--- =========================
--- ใส่รูป Cat ใน Library UI
--- =========================
-task.spawn(function()
-    task.wait(0.7)
-    local foundGui = nil
-    for _, g in ipairs(CoreGui:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name:find("Lates") then
-            foundGui = g
-            break
-        end
-    end
-    if not foundGui then return end
-
-    local mainFrame = foundGui:FindFirstChildWhichIsA("Frame", true) or foundGui:FindFirstChild("Window")
-    if not mainFrame then return end
-
-    local img = Instance.new("ImageLabel")
-    img.Name = "PLam_CatHeader"
-    img.Parent = mainFrame
-    img.Size = UDim2.new(0,110,0,110)
-    img.Position = UDim2.new(0.5,-55,0,-80)
-    img.BackgroundTransparency = 1
-    img.Image = CAT_ICON_ID
-    img.ScaleType = Enum.ScaleType.Fit
-    local u = Instance.new("UICorner", img)
-    u.CornerRadius = UDim.new(0,18)
-end)
-
--- =========================
--- TAB: Main + ปุ่มวาร์ป 6 จุด
--- =========================
-local Main = Window:AddTab({
-    Title = "Main",
-    Section = "Main",
-    Icon = "rbxassetid://11963373994"
-})
-
-local function doTeleportTo(vec)
-    local hrp = getHRP()
-    if hrp then
-        pcall(function()
-            hrp.CFrame = CFrame.new(vec)
-        end)
-    else
-        pcall(function()
-            LocalPlayer:Kick("Teleport failed: character not ready.")
-        end)
-    end
-end
-
-for name, vec in pairs(TP_POINTS) do
-    Window:AddButton({
-        Title = name,
-        Description = "Warp to location",
-        Tab = Main,
-        Callback = function()
-            doTeleportTo(vec)
-        end
-    })
-end    IntroGui.Name = "PLam_Intro"
-    IntroGui.ResetOnSpawn = false
-    IntroGui.Parent = CoreGui
-
-    local Img = Instance.new("ImageLabel", IntroGui)
-    Img.Size = UDim2.new(1,0,1,0)
-    Img.Position = UDim2.new(0,0,0,0)
-    Img.BackgroundTransparency = 1
-    Img.Image = SPLASH_ID
-    Img.ScaleType = Enum.ScaleType.Fit
-    Img.ImageTransparency = 0
-
-    -- เวลาค้างบนจอ (ปรับได้)
-    task.wait(3) -- อยู่ 3 วินาที
-
-    -- fade out
-    local steps = 40
-    for i = 1, steps do
-        Img.ImageTransparency = i/steps
-        task.wait(0.02)
+-- กด OptionBtn -> เปิด SubUI ทับ MainUI
+OptionBtn.MouseButton1Click:Connect(function()
+	MainUI.Visible = false
+	SubUI.Visible = true
+end)      task.wait(0.02)
     end
 
     IntroGui:Destroy()
