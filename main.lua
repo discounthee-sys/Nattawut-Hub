@@ -1,301 +1,206 @@
 --// Services
-local UIS = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
---// Assets
-local smallIcon = "rbxassetid://100401819662162"
-local bigBG = "rbxassetid://82760345395309"
+--// Variables
+local LockedPlayer = nil
+local LockEnabled = false
+local Connection = nil
+local Minimized = false
+local FullSize
 
 --// ScreenGui
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "PlayerLockUI"
 ScreenGui.ResetOnSpawn = false
 
---------------------------------------------------------------------
--- UI เล็ก (Toggle)
---------------------------------------------------------------------
-local Toggle = Instance.new("ImageButton", ScreenGui)
-Toggle.Image = smallIcon
-Toggle.Size = UDim2.new(0, 70, 0, 70)
-Toggle.Position = UDim2.new(0, 20, 0, 200)
-Toggle.BackgroundTransparency = 0.2
-Toggle.BackgroundColor3 = Color3.fromRGB(25,25,25)
-local ToggleCorner = Instance.new("UICorner", Toggle)
-ToggleCorner.CornerRadius = UDim.new(0,16)
+--// Main Frame
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.fromOffset(260, 180)
+Frame.Position = UDim2.fromScale(0.05, 0.3)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
 
--- Drag UI เล็ก
-local draggingBtn, dragStartBtn, startPosBtn = false, nil, nil
-Toggle.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingBtn = true
-		dragStartBtn = input.Position
-		startPosBtn = Toggle.Position
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,12)
+FullSize = Frame.Size
+
+--// Title
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, -35, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "Player Lock"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Position = UDim2.fromOffset(10,0)
+
+--// Minimize Button
+local Minimize = Instance.new("TextButton", Frame)
+Minimize.Size = UDim2.fromOffset(30,30)
+Minimize.Position = UDim2.new(1, -35, 0, 0)
+Minimize.Text = "-"
+Minimize.Font = Enum.Font.GothamBold
+Minimize.TextSize = 18
+Minimize.TextColor3 = Color3.new(1,1,1)
+Minimize.BackgroundTransparency = 1
+
+--// Dropdown
+local Dropdown = Instance.new("TextButton", Frame)
+Dropdown.Position = UDim2.fromOffset(20,50)
+Dropdown.Size = UDim2.fromOffset(220,30)
+Dropdown.Text = "Select Player"
+Dropdown.Font = Enum.Font.Gotham
+Dropdown.TextSize = 12
+Dropdown.TextColor3 = Color3.new(1,1,1)
+Dropdown.BackgroundColor3 = Color3.fromRGB(45,45,45)
+Instance.new("UICorner", Dropdown).CornerRadius = UDim.new(0,8)
+
+--// Player List
+local ListFrame = Instance.new("Frame", Frame)
+ListFrame.Position = UDim2.fromOffset(20,85)
+ListFrame.Size = UDim2.fromOffset(220,0)
+ListFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+ListFrame.BorderSizePixel = 0
+ListFrame.Visible = false
+ListFrame.ClipsDescendants = true
+Instance.new("UICorner", ListFrame).CornerRadius = UDim.new(0,8)
+
+local UIListLayout = Instance.new("UIListLayout", ListFrame)
+UIListLayout.Padding = UDim.new(0,5)
+
+--// Toggle Lock
+local Toggle = Instance.new("TextButton", Frame)
+Toggle.Position = UDim2.fromOffset(20,95)
+Toggle.Size = UDim2.fromOffset(220,30)
+Toggle.Text = "Lock : OFF"
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 12
+Toggle.TextColor3 = Color3.new(1,1,1)
+Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
+Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0,8)
+
+--// Hide Button
+local Close = Instance.new("TextButton", Frame)
+Close.Position = UDim2.fromOffset(20,140)
+Close.Size = UDim2.fromOffset(220,25)
+Close.Text = "Hide UI"
+Close.Font = Enum.Font.Gotham
+Close.TextSize = 12
+Close.TextColor3 = Color3.new(1,1,1)
+Close.BackgroundColor3 = Color3.fromRGB(50,50,50)
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0,8)
+
+--// Build Player List
+local function buildPlayerList()
+	for _,v in pairs(ListFrame:GetChildren()) do
+		if v:IsA("TextButton") then
+			v:Destroy()
+		end
+	end
+
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.fromOffset(220,25)
+			btn.Text = plr.Name
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 12
+			btn.TextColor3 = Color3.new(1,1,1)
+			btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+			btn.Parent = ListFrame
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+
+			btn.MouseButton1Click:Connect(function()
+				LockedPlayer = plr
+				Dropdown.Text = "Target: "..plr.Name
+				ListFrame.Visible = false
+				ListFrame.Size = UDim2.fromOffset(220,0)
+			end)
+		end
+	end
+
+	task.wait()
+	ListFrame.Size = UDim2.fromOffset(220, UIListLayout.AbsoluteContentSize.Y + 10)
+end
+
+Players.PlayerAdded:Connect(buildPlayerList)
+Players.PlayerRemoving:Connect(buildPlayerList)
+
+Dropdown.MouseButton1Click:Connect(function()
+	ListFrame.Visible = not ListFrame.Visible
+	if ListFrame.Visible then
+		buildPlayerList()
 	end
 end)
-Toggle.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingBtn = false
-	end
-end)
-UIS.InputChanged:Connect(function(input)
-	if draggingBtn and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStartBtn
-		Toggle.Position = UDim2.new(startPosBtn.X.Scale, startPosBtn.X.Offset + delta.X,
-			startPosBtn.Y.Scale, startPosBtn.Y.Offset + delta.Y)
-	end
-end)
 
---------------------------------------------------------------------
--- UI ใหญ่หลัก (MainUI)
---------------------------------------------------------------------
-local MainUI = Instance.new("Frame", ScreenGui)
-MainUI.Size = UDim2.new(0, 600, 0, 350)
-MainUI.Position = UDim2.new(0.5, -300, 0.5, -175)
-MainUI.BackgroundTransparency = 0
-MainUI.Visible = false
-MainUI.ClipsDescendants = true
+--// Lock Logic
+local function startLock()
+	if Connection then Connection:Disconnect() end
+	Connection = RunService.RenderStepped:Connect(function()
+		if not LockEnabled or not LockedPlayer then return end
 
-local BG = Instance.new("ImageLabel", MainUI)
-BG.Image = bigBG
-BG.Size = UDim2.new(1,0,1,0)
-BG.BackgroundTransparency = 0
-BG.ScaleType = Enum.ScaleType.Stretch
-local BGCorner = Instance.new("UICorner", BG)
-BGCorner.CornerRadius = UDim.new(0,14)
-
--- Drag UI ใหญ่
-local Drag = Instance.new("Frame", MainUI)
-Drag.Size = UDim2.new(1,0,0,35)
-Drag.BackgroundTransparency = 1
-local draggingUI, dragStartUI, startPosUI = false, nil, nil
-Drag.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingUI = true
-		dragStartUI = input.Position
-		startPosUI = MainUI.Position
-	end
-end)
-Drag.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingUI = false
-	end
-end)
-UIS.InputChanged:Connect(function(input)
-	if draggingUI and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStartUI
-		MainUI.Position = UDim2.new(startPosUI.X.Scale, startPosUI.X.Offset + delta.X,
-			startPosUI.Y.Scale, startPosUI.Y.Offset + delta.Y)
-	end
-end)
-
---------------------------------------------------------------------
--- Toggle UI เล็กเปิด/ปิด MainUI
---------------------------------------------------------------------
-local canClick = true
-Toggle.MouseButton1Click:Connect(function()
-	if not canClick then return end
-	canClick = false
-
-	MainUI.Visible = not MainUI.Visible
-
-	task.delay(0.25, function()
-		canClick = true
+		local char = LocalPlayer.Character
+		local targetChar = LockedPlayer.Character
+		if char and targetChar then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local thrp = targetChar:FindFirstChild("HumanoidRootPart")
+			if hrp and thrp then
+				hrp.CFrame = CFrame.new(
+					hrp.Position,
+					Vector3.new(thrp.Position.X, hrp.Position.Y, thrp.Position.Z)
+				)
+			end
+		end
 	end)
-end)
+end
 
---------------------------------------------------------------------
--- ตัวเลือกปุ่มใน MainUI
---------------------------------------------------------------------
-local OptionsFrame = Instance.new("Frame", MainUI)
-OptionsFrame.Size = UDim2.new(1, -20, 1, -50)
-OptionsFrame.Position = UDim2.new(0,10,0,40)
-OptionsFrame.BackgroundTransparency = 1
-
-local OptionBtn = Instance.new("TextButton", OptionsFrame)
-OptionBtn.Size = UDim2.new(0, 120, 0, 40)
-OptionBtn.Position = UDim2.new(0, 10, 0, 10)
-OptionBtn.Text = "ไปหน้า SubUI"
-OptionBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-local OptionCorner = Instance.new("UICorner", OptionBtn)
-OptionCorner.CornerRadius = UDim.new(0,8)
-
---------------------------------------------------------------------
--- SubUI (เท่ากับ MainUI แต่สีขาว)
---------------------------------------------------------------------
-local SubUI = Instance.new("Frame", ScreenGui)
-SubUI.Size = MainUI.Size
-SubUI.Position = MainUI.Position
-SubUI.BackgroundColor3 = Color3.fromRGB(255,255,255)
-SubUI.Visible = false
-SubUI.ClipsDescendants = true
-
--- Drag SubUI
-local SubDrag = Instance.new("Frame", SubUI)
-SubDrag.Size = UDim2.new(1,0,0,35)
-SubDrag.BackgroundTransparency = 1
-local draggingSub, dragStartSub, startPosSub = false, nil, nil
-SubDrag.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingSub = true
-		dragStartSub = input.Position
-		startPosSub = SubUI.Position
-	end
-end)
-SubDrag.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		draggingSub = false
-	end
-end)
-UIS.InputChanged:Connect(function(input)
-	if draggingSub and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStartSub
-		SubUI.Position = UDim2.new(startPosSub.X.Scale, startPosSub.X.Offset + delta.X,
-			startPosSub.Y.Scale, startPosSub.Y.Offset + delta.Y)
+Toggle.MouseButton1Click:Connect(function()
+	LockEnabled = not LockEnabled
+	if LockEnabled then
+		Toggle.Text = "Lock : ON"
+		Toggle.BackgroundColor3 = Color3.fromRGB(40,80,40)
+		startLock()
+	else
+		Toggle.Text = "Lock : OFF"
+		Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
+		if Connection then Connection:Disconnect() end
 	end
 end)
 
--- ปุ่มย้อนกลับ SubUI -> MainUI
-local BackBtn = Instance.new("TextButton", SubUI)
-BackBtn.Size = UDim2.new(0, 100, 0, 30)
-BackBtn.Position = UDim2.new(0, 10, 0, 10)
-BackBtn.Text = "กลับ"
-BackBtn.BackgroundColor3 = Color3.fromRGB(200,200,200)
-local BackCorner = Instance.new("UICorner", BackBtn)
-BackCorner.CornerRadius = UDim.new(0,6)
-
-BackBtn.MouseButton1Click:Connect(function()
-	SubUI.Visible = false
-	MainUI.Visible = true
+--// Minimize
+Minimize.MouseButton1Click:Connect(function()
+	Minimized = not Minimized
+	if Minimized then
+		Frame.Size = UDim2.fromOffset(260,30)
+		for _,v in pairs(Frame:GetChildren()) do
+			if v ~= Title and v ~= Minimize and not v:IsA("UICorner") then
+				v.Visible = false
+			end
+		end
+		Minimize.Text = "+"
+	else
+		Frame.Size = FullSize
+		for _,v in pairs(Frame:GetChildren()) do
+			v.Visible = true
+		end
+		Minimize.Text = "-"
+	end
 end)
 
--- กด OptionBtn -> เปิด SubUI ทับ MainUI
-OptionBtn.MouseButton1Click:Connect(function()
-	MainUI.Visible = false
-	SubUI.Visible = true
-end)      task.wait(0.02)
-    end
-
-    IntroGui:Destroy()
-end
-
--- =========================
--- Draggable Open Button (รูป Cat) — ลากได้ และเปิด/ปิด UI
--- =========================
-local OpenGui = Instance.new("ScreenGui")
-OpenGui.Name = "PLam_OpenBtnGui"
-OpenGui.ResetOnSpawn = false
-OpenGui.Parent = CoreGui
-
-local OpenBtn = Instance.new("ImageButton")
-OpenBtn.Name = "PLam_OpenBtn"
-OpenBtn.Parent = OpenGui
-OpenBtn.Size = UDim2.new(0, 64, 0, 64)
-OpenBtn.Position = UDim2.new(0.04, 0, 0.5, -32)
-OpenBtn.AnchorPoint = Vector2.new(0,0)
-OpenBtn.BackgroundTransparency = 0
-OpenBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-OpenBtn.Image = CAT_ICON_ID
-OpenBtn.ScaleType = Enum.ScaleType.Fit
-OpenBtn.AutoButtonColor = true
-
-local corner = Instance.new("UICorner", OpenBtn)
-corner.CornerRadius = UDim.new(0, 14)
-
--- Dragging logic
-local dragging, dragStart, startPos
-OpenBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = OpenBtn.Position
-    end
-end)
-OpenBtn.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        OpenBtn.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        dragging = false
-    end
+--// Hide UI
+Close.MouseButton1Click:Connect(function()
+	Frame.Visible = false
 end)
 
--- =========================
--- Load Lates Library Window (ไม่เปลี่ยน UI หลักของพี่)
--- =========================
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/lxte/lates-lib/main/Main.lua"))()
-local Window = Library:CreateWindow({
-    Title = "P' Lam Hub",
-    Theme = "Dark",
-    Size = UDim2.fromOffset(570, 370),
-    Transparency = 0.15,
-    Blurring = false,
-    MinimizeKeybind = Enum.KeyCode.LeftAlt,
-})
-
-Window:SetTheme({
-    Primary = Color3.fromRGB(30,30,30),
-    Secondary = Color3.fromRGB(35,35,35),
-    Component = Color3.fromRGB(40,40,40),
-    Interactables = Color3.fromRGB(45,45,45),
-    Tab = Color3.fromRGB(200,200,200),
-    Title = Color3.fromRGB(240,240,240),
-    Description = Color3.fromRGB(200,200,200),
-    Shadow = Color3.fromRGB(0,0,0),
-    Outline = Color3.fromRGB(40,40,40),
-    Icon = Color3.fromRGB(220,220,220),
-})
-
--- Toggle UI: เมื่อกดปุ่ม Cat จะเปิด/ปิดหน้าต่างที่สร้างโดย Library
-local uiVisible = end
-OpenBtn.MouseButton1Click:Connect(function()
-    uiVisible = not uiVisible
-    -- ลูปหา ScreenGui ของ Library แล้วสั่ง Enabled (หลายชื่อ fallback)
-    for _, v in ipairs(CoreGui:GetChildren()) do
-        if v:IsA("ScreenGui") and (v.Name:lower():find("lates") or v.Name:lower():find("window") or v.Name:lower():find("lib")) then
-            v.Enabled = uiVisible
-        end
-    end
+--// Toggle UI Keybind (RightAlt)
+UserInputService.InputBegan:Connect(function(input,gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.RightAlt then
+		Frame.Visible = not Frame.Visible
+	end
 end)
-
--- TAB: Main + ปุ่มวาร์ป 6 จุด
--- =========================
-local Main = Window:AddTab({
-    Title = "Main",
-    Section = "Main",
-    Icon = "rbxassetid://11963373994"
-})
-
-local function doTeleportTo(vec)
-    local hrp = getHRP()
-    if hrp then
-        pcall(function()
-            hrp.CFrame = CFrame.new(vec)
-        end)
-    else
-        -- ถ้ายังไม่มีตัว ให้บอกผู้เล่น
-        pcall(function()
-            LocalPlayer:Kick("Teleport failed: character not ready.")
-        end)
-    end
-end
-
-for name, vec in pairs(TP_POINTS) do
-    Window:AddButton({
-        Title = name,
-        Description = "Warp to location",
-        Tab = Main,
-        Callback = function()
-            doTeleportTo(vec)
-        end
-    })
-end
-
--- =========================
--- Note:
--- - โค้ดนี้ไม่มีระบบ Auto-Return (ที่พี่ขอเอาออก)
--- - ถ้าต้องการให้ผมเพิ่ม "บันทึกตำแหน่งขณะใช้งาน" หรือ "ปุ่มแก้ชื่อ" บอกได้เลย
--- =========================
