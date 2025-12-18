@@ -1,7 +1,6 @@
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 --// Variables
@@ -9,12 +8,11 @@ local LockedPlayer = nil
 local LockEnabled = false
 local Connection = nil
 
---// ScreenGui
+--// Simple UI
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "PlayerLockUI"
 ScreenGui.ResetOnSpawn = false
 
---// Main Frame
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.Size = UDim2.fromOffset(260, 180)
 Frame.Position = UDim2.fromScale(0.05, 0.3)
@@ -23,18 +21,131 @@ Frame.BorderSizePixel = 0
 Frame.Active = true
 Frame.Draggable = true
 
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,12)
+local UICorner = Instance.new("UICorner", Frame)
+UICorner.CornerRadius = UDim.new(0,12)
 
---// Title
 local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, -35, 0, 30)
+Title.Size = UDim2.new(1,0,0,30)
 Title.BackgroundTransparency = 1
 Title.Text = "Player Lock"
 Title.TextColor3 = Color3.fromRGB(255,255,255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Position = UDim2.fromOffset(10,0)
+
+local Dropdown = Instance.new("TextButton", Frame)
+Dropdown.Position = UDim2.fromOffset(20,50)
+Dropdown.Size = UDim2.fromOffset(220,30)
+Dropdown.Text = "Select Player"
+Dropdown.Font = Enum.Font.Gotham
+Dropdown.TextSize = 12
+Dropdown.TextColor3 = Color3.new(1,1,1)
+Dropdown.BackgroundColor3 = Color3.fromRGB(45,45,45)
+
+Instance.new("UICorner", Dropdown).CornerRadius = UDim.new(0,8)
+
+local Toggle = Instance.new("TextButton", Frame)
+Toggle.Position = UDim2.fromOffset(20,95)
+Toggle.Size = UDim2.fromOffset(220,30)
+Toggle.Text = "Lock : OFF"
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 12
+Toggle.TextColor3 = Color3.new(1,1,1)
+Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
+
+Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0,8)
+
+local Close = Instance.new("TextButton", Frame)
+Close.Position = UDim2.fromOffset(20,140)
+Close.Size = UDim2.fromOffset(220,25)
+Close.Text = "Hide UI"
+Close.Font = Enum.Font.Gotham
+Close.TextSize = 12
+Close.TextColor3 = Color3.new(1,1,1)
+Close.BackgroundColor3 = Color3.fromRGB(50,50,50)
+
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0,8)
+
+--// Player Select (วนชื่อไปเรื่อย ๆ)
+local playerList = {}
+local index = 1
+
+local function refreshPlayers()
+	playerList = {}
+	for _,plr in pairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			table.insert(playerList, plr)
+		end
+	end
+	index = 1
+end
+
+refreshPlayers()
+Players.PlayerAdded:Connect(refreshPlayers)
+Players.PlayerRemoving:Connect(refreshPlayers)
+
+Dropdown.MouseButton1Click:Connect(function()
+	if #playerList == 0 then
+		Dropdown.Text = "No Players"
+		return
+	end
+	LockedPlayer = playerList[index]
+	Dropdown.Text = "Target: "..LockedPlayer.Name
+	index += 1
+	if index > #playerList then
+		index = 1
+	end
+end)
+
+--// Lock Logic
+local function startLock()
+	if Connection then Connection:Disconnect() end
+	Connection = RunService.RenderStepped:Connect(function()
+		if not LockEnabled or not LockedPlayer then return end
+
+		local char = LocalPlayer.Character
+		local targetChar = LockedPlayer.Character
+		if char and targetChar then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local targetHrp = targetChar:FindFirstChild("HumanoidRootPart")
+			if hrp and targetHrp then
+				hrp.CFrame = CFrame.new(
+					hrp.Position,
+					Vector3.new(
+						targetHrp.Position.X,
+						hrp.Position.Y,
+						targetHrp.Position.Z
+					)
+				)
+			end
+		end
+	end)
+end
+
+Toggle.MouseButton1Click:Connect(function()
+	LockEnabled = not LockEnabled
+	if LockEnabled then
+		Toggle.Text = "Lock : ON"
+		Toggle.BackgroundColor3 = Color3.fromRGB(40,80,40)
+		startLock()
+	else
+		Toggle.Text = "Lock : OFF"
+		Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
+		if Connection then Connection:Disconnect() end
+	end
+end)
+
+--// Hide UI
+Close.MouseButton1Click:Connect(function()
+	Frame.Visible = false
+end)
+
+--// Toggle UI Keybind (RightAlt)
+game:GetService("UserInputService").InputBegan:Connect(function(input,gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.RightAlt then
+		Frame.Visible = not Frame.Visible
+	end
+end)Title.Position = UDim2.fromOffset(10,0)
 
 --// Dropdown
 local Dropdown = Instance.new("TextButton", Frame)
