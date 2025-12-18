@@ -24,25 +24,24 @@ Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 Frame.BorderSizePixel = 0
 Frame.Active = true
 Frame.Draggable = true
-
 Instance.new("UICorner", Frame).CornerRadius = UDim.new(0,12)
 FullSize = Frame.Size
 
 --// Title
 local Title = Instance.new("TextLabel", Frame)
 Title.Size = UDim2.new(1, -35, 0, 30)
+Title.Position = UDim2.fromOffset(10,0)
 Title.BackgroundTransparency = 1
 Title.Text = "Player Lock"
-Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.TextColor3 = Color3.new(1,1,1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Position = UDim2.fromOffset(10,0)
 
---// Minimize Button
+--// Minimize
 local Minimize = Instance.new("TextButton", Frame)
 Minimize.Size = UDim2.fromOffset(30,30)
-Minimize.Position = UDim2.new(1, -35, 0, 0)
+Minimize.Position = UDim2.new(1,-35,0,0)
 Minimize.Text = "-"
 Minimize.Font = Enum.Font.GothamBold
 Minimize.TextSize = 18
@@ -84,7 +83,7 @@ Toggle.TextColor3 = Color3.new(1,1,1)
 Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
 Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0,8)
 
---// Hide Button
+--// Hide
 local Close = Instance.new("TextButton", Frame)
 Close.Position = UDim2.fromOffset(20,140)
 Close.Size = UDim2.fromOffset(220,25)
@@ -95,7 +94,7 @@ Close.TextColor3 = Color3.new(1,1,1)
 Close.BackgroundColor3 = Color3.fromRGB(50,50,50)
 Instance.new("UICorner", Close).CornerRadius = UDim.new(0,8)
 
---// Build Player List
+--// Build Player List (Realtime)
 local function buildPlayerList()
 	for _,v in pairs(ListFrame:GetChildren()) do
 		if v:IsA("TextButton") then
@@ -129,13 +128,20 @@ local function buildPlayerList()
 end
 
 Players.PlayerAdded:Connect(buildPlayerList)
-Players.PlayerRemoving:Connect(buildPlayerList)
+Players.PlayerRemoving:Connect(function(plr)
+	if LockedPlayer == plr then
+		LockedPlayer = nil
+		LockEnabled = false
+		Dropdown.Text = "Select Player"
+		Toggle.Text = "Lock : OFF"
+		Toggle.BackgroundColor3 = Color3.fromRGB(80,40,40)
+	end
+	buildPlayerList()
+end)
 
 Dropdown.MouseButton1Click:Connect(function()
+	buildPlayerList()
 	ListFrame.Visible = not ListFrame.Visible
-	if ListFrame.Visible then
-		buildPlayerList()
-	end
 end)
 
 --// Lock Logic
@@ -145,10 +151,10 @@ local function startLock()
 		if not LockEnabled or not LockedPlayer then return end
 
 		local char = LocalPlayer.Character
-		local targetChar = LockedPlayer.Character
-		if char and targetChar then
+		local tchar = LockedPlayer.Character
+		if char and tchar then
 			local hrp = char:FindFirstChild("HumanoidRootPart")
-			local thrp = targetChar:FindFirstChild("HumanoidRootPart")
+			local thrp = tchar:FindFirstChild("HumanoidRootPart")
 			if hrp and thrp then
 				hrp.CFrame = CFrame.new(
 					hrp.Position,
@@ -172,9 +178,10 @@ Toggle.MouseButton1Click:Connect(function()
 	end
 end)
 
---// Minimize
+--// Minimize (Fix Function Loss)
 Minimize.MouseButton1Click:Connect(function()
 	Minimized = not Minimized
+
 	if Minimized then
 		Frame.Size = UDim2.fromOffset(260,30)
 		for _,v in pairs(Frame:GetChildren()) do
@@ -185,22 +192,26 @@ Minimize.MouseButton1Click:Connect(function()
 		Minimize.Text = "+"
 	else
 		Frame.Size = FullSize
-		for _,v in pairs(Frame:GetChildren()) do
-			v.Visible = true
-		end
+		Dropdown.Visible = true
+		Toggle.Visible = true
+		Close.Visible = true
+		ListFrame.Visible = false
+		ListFrame.Size = UDim2.fromOffset(220,0)
 		Minimize.Text = "-"
 	end
 end)
 
---// Hide UI
+--// Hide
 Close.MouseButton1Click:Connect(function()
 	Frame.Visible = false
 end)
 
---// Toggle UI Keybind (RightAlt)
+--// RightAlt Toggle UI
 UserInputService.InputBegan:Connect(function(input,gp)
 	if gp then return end
 	if input.KeyCode == Enum.KeyCode.RightAlt then
 		Frame.Visible = not Frame.Visible
+	end
+end)e
 	end
 end)
