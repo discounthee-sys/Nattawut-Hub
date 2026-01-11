@@ -1,11 +1,12 @@
 --[[
-    UI NAME: Nattawut-Ch (Anti-Spam Edition)
-    VERSION: 5.1 (Final Logic | Draggable Home | No Spam Notify)
+    UI NAME: Nattawut-Ch (Ultimate Full Integrated)
+    VERSION: 6.9 (Gameplay + Macro + Ray-Style)
 ]]
 
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- ล้าง UI เก่า
 if CoreGui:FindFirstChild("Nattawut_UI_v4") then 
@@ -17,23 +18,286 @@ ScreenGui.Name = "Nattawut_UI_v4"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- [[ 1. Anti-Spam Notification System (Logic: Wait for finish) ]] --
-local isNotifying = false -- ตัวแปรเช็คสถานะว่ามีแจ้งเตือนค้างอยู่ไหม
+-- [[ 1. ระบบแจ้งเตือนกันสแปม ]] --
+local isNotifying = false
+local function playNotify(msg)
+    if isNotifying then return end
+    isNotifying = true
+    local Notif = Instance.new("Frame", ScreenGui)
+    Notif.Size = UDim2.new(0, 220, 0, 40)
+    Notif.Position = UDim2.new(1, 20, 0, 20)
+    Notif.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Notif.BackgroundTransparency = 0.3
+    Instance.new("UICorner", Notif).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", Notif).Color = Color3.fromRGB(0, 170, 255)
 
-local function playNotify(tabName)
-    if isNotifying then return end -- ถ้ากำลังแจ้งเตือนอยู่ ให้กั้นไว้ห้ามขึ้นซ้ำ (ห้ามสแปม)
-    
-    isNotifying = true -- ล็อคสถานะ
-    
-    local messages = {
-        ["Gameplay"] = "⚔️ COMBAT READY",
-        ["Macro"] = "⚙️ MACRO ACTIVE",
-        ["Summon"] = "🔮 SUMMONING",
-        ["Settings"] = "🔧 CONFIGURATION"
-    }
+    local Txt = Instance.new("TextLabel", Notif)
+    Txt.Size = UDim2.new(1, 0, 1, 0)
+    Txt.BackgroundTransparency = 1
+    Txt.Text = "SYSTEM > " .. msg:upper()
+    Txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Txt.Font = Enum.Font.GothamBold
+    Txt.TextSize = 10
 
-    local Notif = Instance.new("Frame")
-    Notif.Size = UDim2.new(0, 200, 0, 40)
+    Notif:TweenPosition(UDim2.new(1, -240, 0, 20), "Out", "Quad", 0.15, true)
+    task.wait(1.2)
+    local tweenOut = TweenService:Create(Notif, TweenInfo.new(0.15), {Position = UDim2.new(1, 20, 0, 20)})
+    tweenOut:Play()
+    tweenOut.Completed:Connect(function() Notif:Destroy() isNotifying = false end)
+end
+
+-- [[ 2. ฟังก์ชันการลาก (Draggable) ]] --
+local function makeDraggable(obj)
+    local dragging, dragInput, dragStart, startPos
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true dragStart = input.Position startPos = obj.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+end
+
+-- [[ 3. Main Frame (Ray Style) ]] --
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 560, 0, 390)
+Main.Position = UDim2.new(0.5, -280, 0.5, -195)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.BackgroundTransparency = 0.2
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+makeDraggable(Main)
+
+-- [[ 4. Tabs & Container ]] --
+local BrandTitle = Instance.new("TextLabel", Main)
+BrandTitle.Text = "Nattawut-Ch"
+BrandTitle.Size = UDim2.new(0, 130, 0, 60)
+BrandTitle.Position = UDim2.new(0, 20, 0, 0)
+BrandTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+BrandTitle.Font = Enum.Font.GothamBold
+BrandTitle.TextSize = 18
+BrandTitle.BackgroundTransparency = 1
+BrandTitle.TextXAlignment = "Left"
+
+local TabBar = Instance.new("Frame", Main)
+TabBar.Size = UDim2.new(1, -160, 0, 45)
+TabBar.Position = UDim2.new(0, 150, 0, 7)
+TabBar.BackgroundTransparency = 1
+Instance.new("UIListLayout", TabBar).FillDirection = "Horizontal"
+
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -20, 1, -85)
+Container.Position = UDim2.new(0, 10, 0, 75)
+Container.BackgroundTransparency = 0.8
+Container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Instance.new("UICorner", Container)
+
+local function addPage(name)
+    local Page = Instance.new("ScrollingFrame", Container)
+    Page.Size = UDim2.new(1, -10, 1, -10)
+    Page.Position = UDim2.new(0, 5, 0, 5)
+    Page.BackgroundTransparency = 1
+    Page.Visible = false
+    Page.ScrollBarThickness = 0
+    local Layout = Instance.new("UIListLayout", Page)
+    Layout.Padding = UDim.new(0, 10)
+    Layout.HorizontalAlignment = "Center"
+    
+    local Btn = Instance.new("TextButton", TabBar)
+    Btn.Size = UDim2.new(0, 90, 1, 0)
+    Btn.BackgroundTransparency = 1
+    Btn.Text = name
+    Btn.TextColor3 = Color3.fromRGB(130, 130, 130)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 11
+    
+    Btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(Container:GetChildren()) do if p:IsA("ScrollingFrame") then p.Visible = false end end
+        Page.Visible = true
+        for _, b in pairs(TabBar:GetChildren()) do if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(130, 130, 130) end end
+        Btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+    end)
+    return Page
+end
+
+-- [[ 5. Ray UI Components ]] --
+
+-- สวิตช์เปิด/ปิด (Blue Toggle)
+local function createToggle(parent, text, callback)
+    local F = Instance.new("Frame", parent)
+    F.Size = UDim2.new(0.95, 0, 0, 50)
+    F.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    F.BackgroundTransparency = 0.95
+    Instance.new("UICorner", F)
+
+    local L = Instance.new("TextLabel", F)
+    L.Text = text
+    L.Size = UDim2.new(0.6, 0, 1, 0)
+    L.Position = UDim2.new(0, 15, 0, 0)
+    L.TextColor3 = Color3.fromRGB(255, 255, 255)
+    L.BackgroundTransparency = 1
+    L.TextXAlignment = "Left"
+    L.Font = Enum.Font.GothamBold
+    L.TextSize = 13
+
+    local Tbg = Instance.new("TextButton", F)
+    Tbg.Size = UDim2.new(0, 40, 0, 20)
+    Tbg.Position = UDim2.new(1, -55, 0.5, -10)
+    Tbg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Tbg.Text = ""
+    Instance.new("UICorner", Tbg).CornerRadius = UDim.new(1, 0)
+
+    local Dot = Instance.new("Frame", Tbg)
+    Dot.Size = UDim2.new(0, 14, 0, 14)
+    Dot.Position = UDim2.new(0, 3, 0.5, -7)
+    Dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
+
+    local enabled = false
+    Tbg.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        local targetPos = enabled and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+        local targetColor = enabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(40, 40, 40)
+        TweenService:Create(Dot, TweenInfo.new(0.2), {Position = targetPos}):Play()
+        TweenService:Create(Tbg, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        callback(enabled)
+        playNotify(text .. (enabled and " On" or " Off"))
+    end)
+end
+
+-- ปุ่มเลือกแบบ Ray Option (Dropdown Style)
+local function createRayOption(parent, title, options, callback)
+    local Frame = Instance.new("Frame", parent)
+    Frame.Size = UDim2.new(0.95, 0, 0, 50)
+    Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Frame.BackgroundTransparency = 0.96
+    Instance.new("UICorner", Frame)
+
+    local Label = Instance.new("TextLabel", Frame)
+    Label.Text = title:upper()
+    Label.Size = UDim2.new(0.4, 0, 1, 0)
+    Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Label.BackgroundTransparency = 1
+    Label.TextXAlignment = "Left"
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 11
+
+    local Cont = Instance.new("Frame", Frame)
+    Cont.Size = UDim2.new(0.55, 0, 1, 0)
+    Cont.Position = UDim2.new(0.45, -10, 0, 0)
+    Cont.BackgroundTransparency = 1
+    Instance.new("UIListLayout", Cont).FillDirection = "Horizontal"
+    Cont.UIListLayout.HorizontalAlignment = "Right"
+    Cont.UIListLayout.VerticalAlignment = "Center"
+    Cont.UIListLayout.Padding = UDim.new(0, 6)
+
+    for _, opt in pairs(options) do
+        local B = Instance.new("TextButton", Cont)
+        B.Size = UDim2.new(0, 65, 0, 28)
+        B.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        B.BackgroundTransparency = 0.9
+        B.Text = opt
+        B.TextColor3 = Color3.fromRGB(255, 255, 255)
+        B.Font = Enum.Font.GothamBold
+        B.TextSize = 10
+        Instance.new("UIStroke", B).Color = Color3.fromRGB(0, 170, 255)
+        Instance.new("UICorner", B)
+        B.MouseButton1Click:Connect(function() 
+            for _, btn in pairs(Cont:GetChildren()) do if btn:IsA("TextButton") then btn.BackgroundTransparency = 0.9 end end
+            B.BackgroundTransparency = 0.6
+            callback(opt) 
+        end)
+    end
+end
+
+-- ช่องใส่ชื่อไฟล์ (Input)
+local function createFileNameInput(parent, title, callback)
+    local F = Instance.new("Frame", parent)
+    F.Size = UDim2.new(0.95, 0, 0, 60)
+    F.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    F.BackgroundTransparency = 0.96
+    Instance.new("UICorner", F)
+    local L = Instance.new("TextLabel", F)
+    L.Text = title:upper()
+    L.Size = UDim2.new(1, 0, 0, 25)
+    L.Position = UDim2.new(0, 15, 0, 5)
+    L.TextColor3 = Color3.fromRGB(180, 180, 180)
+    L.BackgroundTransparency = 1
+    L.TextXAlignment = "Left"
+    L.Font = Enum.Font.GothamBold
+    L.TextSize = 10
+    local Input = Instance.new("TextBox", F)
+    Input.Size = UDim2.new(0.7, 0, 0, 25)
+    Input.Position = UDim2.new(0, 15, 0, 30)
+    Input.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Input.BackgroundTransparency = 0.8
+    Input.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Input.PlaceholderText = "Enter Name..."
+    Input.Font = Enum.Font.GothamMedium
+    Input.TextSize = 12
+    Instance.new("UICorner", Input)
+    local Btn = Instance.new("TextButton", F)
+    Btn.Size = UDim2.new(0, 55, 0, 25)
+    Btn.Position = UDim2.new(0.75, 5, 0, 30)
+    Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    Btn.Text = "CREATE"
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 9
+    Instance.new("UICorner", Btn)
+    Btn.MouseButton1Click:Connect(function() if Input.Text ~= "" then callback(Input.Text) Input.Text = "" end end)
+end
+
+-- --- [ APPLY PAGES ] --- --
+local GameplayTab = addPage("Gameplay")
+local MacroTab    = addPage("Macro")
+addPage("Summon")
+addPage("Settings")
+GameplayTab.Visible = true
+
+-- [[ 6. GAMEPLAY FUNCTIONS ]]
+createToggle(GameplayTab, "Auto Start", function(state) _G.AutoStart = state end)
+createToggle(GameplayTab, "Auto Replay", function(state) _G.AutoReplay = state end)
+createToggle(GameplayTab, "Auto Select Card", function(state) _G.AutoCard = state end)
+
+createRayOption(GameplayTab, "Wave Speed", {"Fast", "Super"}, function(choice)
+    local val = (choice == "Fast") and "Fast Wave" or "Super Faster Wave"
+    ReplicatedStorage:WaitForChild("PlayMode"):WaitForChild("Events"):WaitForChild("StageChallenge"):FireServer(val)
+end)
+
+createRayOption(GameplayTab, "Card Select", {"2", "3"}, function(choice)
+    _G.SelectedCard = choice
+end)
+
+-- [[ 7. MACRO FUNCTIONS ]]
+createFileNameInput(MacroTab, "Create Macro File", function(name)
+    playNotify("File Created: " .. name)
+end)
+
+createRayOption(MacroTab, "Select Macro", {"Macro 1", "Macro 2"}, function(choice)
+    playNotify("Loaded: " .. choice)
+end)
+
+createToggle(MacroTab, "Record Macro", function(state) _G.IsRecording = state end)
+createToggle(MacroTab, "Auto Play Macro", function(state) _G.AutoPlay = state end)
+
+-- [[ 8. Toggle Button (N) ]] --
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0, 20, 1, -70)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+ToggleBtn.BackgroundTransparency = 0.5
+ToggleBtn.Text = "N"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 12)
+makeDraggable(ToggleBtn)
+ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
     Notif.Position = UDim2.new(1, 20, 0, 20)
     Notif.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     Notif.BackgroundTransparency = 0.2
