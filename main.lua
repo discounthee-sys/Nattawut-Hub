@@ -1,40 +1,152 @@
---[[
-    UI NAME: Nattawut-Ch (Ultimate Full Integrated)
-    VERSION: 6.9 (Gameplay + Macro + Ray-Style)
-]]
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local HttpService = game:GetService("HttpService")
 
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Window = Rayfield:CreateWindow({
+   Name = "Nattawut Final Hub",
+   LoadingTitle = "Nattawut System Loading...",
+   LoadingSubtitle = "by Gemini AI",
+   ConfigurationSaving = {Enabled = true, FolderName = "NattawutData", FileName = "Config"}
+})
 
--- ล้าง UI เก่า
-if CoreGui:FindFirstChild("Nattawut_UI_v4") then 
-    CoreGui.Nattawut_UI_v4:Destroy() 
+-- [[ VARIABLES ]]
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local recording = false
+local playing = false
+local autoCollect = false 
+local pathData = {}
+local fileName = "Nattawut_Macro.json"
+
+-- [[ THE COLLECTOR FUNCTION (ของพี่เป๊ะๆ) ]]
+local function collectItem(obj)
+    if obj:IsA("ProximityPrompt") then
+        fireproximityprompt(obj)
+    elseif obj:IsA("TouchTransmitter") then
+        firetouchinterest(hrp, obj.Parent, 0)
+        task.wait()
+        firetouchinterest(hrp, obj.Parent, 1)
+    end
 end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Nattawut_UI_v4"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
+-- ระบบลูปเก็บของ (ใช้ Logic ที่พี่ให้มา)
+task.spawn(function()
+    while true do
+        if autoCollect then
+            -- สแกนหาไอเทมตามที่พี่กำหนด
+            for _, v in pairs(game.Workspace:GetDescendants()) do
+                if not autoCollect then break end
+                
+                if v.Name:find("Dio") or v.Name:find("Present") or v.Name:find("Gift") then
+                    collectItem(v)
+                    -- สแกนลูกข้างในตามที่พี่ต้องการ
+                    for _, child in pairs(v:GetDescendants()) do
+                        collectItem(child)
+                    end
+                end
+            end
+        end
+        task.wait(1) -- พัก 1 วินาทีกันค้าง
+    end
+end)
 
--- [[ 1. ระบบแจ้งเตือนกันสแปม ]] --
-local isNotifying = false
-local function playNotify(msg)
-    if isNotifying then return end
-    isNotifying = true
-    local Notif = Instance.new("Frame", ScreenGui)
-    Notif.Size = UDim2.new(0, 220, 0, 40)
-    Notif.Position = UDim2.new(1, 20, 0, 20)
-    Notif.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Notif.BackgroundTransparency = 0.3
-    Instance.new("UICorner", Notif).CornerRadius = UDim.new(0, 8)
-    Instance.new("UIStroke", Notif).Color = Color3.fromRGB(0, 170, 255)
+-- [[ MACRO & OTHER FUNCTIONS ]]
+local function setNoclip(state)
+    task.spawn(function()
+        while state and playing do
+            if char then
+                for _, v in pairs(char:GetChildren()) do
+                    if v:IsA("BasePart") then v.CanCollide = false end
+                end
+            end
+            task.wait(0.1)
+        end
+    end)
+end
 
-    local Txt = Instance.new("TextLabel", Notif)
-    Txt.Size = UDim2.new(1, 0, 1, 0)
-    Txt.BackgroundTransparency = 1
-    Txt.Text = "SYSTEM > " .. msg:upper()
+local function saveMacro()
+    local success, encoded = pcall(function()
+        local dataToSave = {}
+        for _, cframe in ipairs(pathData) do table.insert(dataToSave, {cframe:GetComponents()}) end
+        return HttpService:JSONEncode(dataToSave)
+    end)
+    if success then writefile(fileName, encoded) Rayfield:Notify({Title = "Success", Content = "เซฟแล้ว!", Duration = 3}) end
+end
+
+local function loadMacro()
+    if isfile(fileName) then
+        local success, decoded = pcall(function()
+            local data = HttpService:JSONDecode(readfile(fileName))
+            pathData = {}
+            for _, components in ipairs(data) do table.insert(pathData, CFrame.new(unpack(components))) end
+        end)
+        if success then Rayfield:Notify({Title = "Loaded", Content = "โหลดแล้ว!", Duration = 3}) end
+    end
+end
+
+-- [[ UI TABS ]]
+local MainTab = Window:CreateTab("Main Features", 4483345998)
+
+MainTab:CreateSection("Auto Farming")
+
+MainTab:CreateToggle({
+   Name = "💰 เปิดระบบเก็บของ (Logic เดิมของพี่)",
+   CurrentValue = false,
+   Flag = "AutoCollectFlag",
+   Callback = function(Value)
+      autoCollect = Value
+   end,
+})
+
+MainTab:CreateSection("Macro Recorder")
+
+MainTab:CreateButton({
+   Name = "🔴 Start Record (อัดใหม่)",
+   Callback = function()
+      recording = true
+      pathData = {}
+      Rayfield:Notify({Title = "Recording", Content = "เริ่มอัด...", Duration = 3})
+      task.spawn(function()
+          while recording do
+              table.insert(pathData, hrp.CFrame)
+              task.wait(0.1)
+          end
+      end)
+   end,
+})
+
+MainTab:CreateButton({ Name = "⏹️ Stop Record", Callback = function() recording = false end })
+MainTab:CreateButton({ Name = "💾 Save Macro", Callback = saveMacro })
+MainTab:CreateButton({ Name = "📂 Load Macro", Callback = loadMacro })
+MainTab:CreateButton({ 
+    Name = "🗑️ Delete All", 
+    Callback = function() 
+        pathData = {} 
+        if isfile(fileName) then delfile(fileName) end 
+    end 
+})
+
+MainTab:CreateSection("Play")
+
+MainTab:CreateButton({
+   Name = "▶️ Start Macro (เดินวน + ทะลุบล็อก)",
+   Callback = function()
+      if #pathData == 0 then return end
+      playing = true
+      setNoclip(true)
+      task.spawn(function()
+          while playing do
+              for _, frame in ipairs(pathData) do
+                  if not playing then break end
+                  hrp.CFrame = frame
+                  task.wait(0.1)
+              end
+          end
+      end)
+   end,
+})
+
+MainTab:CreateButton({ Name = "🚫 Stop Play", Callback = function() playing = false setNoclip(false) end })    Txt.Text = "SYSTEM > " .. msg:upper()
     Txt.TextColor3 = Color3.fromRGB(255, 255, 255)
     Txt.Font = Enum.Font.GothamBold
     Txt.TextSize = 10
