@@ -1,39 +1,280 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
-local Window = Rayfield:CreateWindow({
-   Name = "Nattawut Final Hub",
-   LoadingTitle = "Nattawut System Loading...",
-   LoadingSubtitle = "by Gemini AI",
-   ConfigurationSaving = {Enabled = true, FolderName = "NattawutData", FileName = "Config"}
-})
+-- [[ 🛠️ BACKEND LOGIC - ห้ามลบส่วนนี้เพื่อให้ระบบทำงานได้ ]] --
+local MacroSystem = {
+    IsRecording = false,
+    IsPlaying = false,
+    Data = {},
+    StartTime = 0,
+    Folder = "ImmortalLogic_Macros",
+    ConfigFile = "ImmortalLogic_Config.json"
+}
 
--- [[ VARIABLES ]]
-local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
-local recording = false
-local playing = false
-local autoCollect = false 
-local pathData = {}
-local fileName = "Nattawut_Macro.json"
+if not isfolder(MacroSystem.Folder) then makefolder(MacroSystem.Folder) end
 
--- [[ THE COLLECTOR FUNCTION (ของพี่เป๊ะๆ) ]]
-local function collectItem(obj)
-    if obj:IsA("ProximityPrompt") then
-        fireproximityprompt(obj)
-    elseif obj:IsA("TouchTransmitter") then
-        firetouchinterest(hrp, obj.Parent, 0)
-        task.wait()
-        firetouchinterest(hrp, obj.Parent, 1)
+-- ฟังก์ชันดึงรายชื่อไฟล์เข้า Dropdown
+local function UpdateDropdown()
+    local files = listfiles(MacroSystem.Folder)
+    local names = {}
+    for _, file in ipairs(files) do
+        table.insert(names, file:gsub(MacroSystem.Folder .. "/", ""):gsub(MacroSystem.Folder .. "\\", ""):gsub(".json", ""))
     end
+    if _G.MacroDropdown then _G.MacroDropdown:SetValues(names) end
 end
 
--- ระบบลูปเก็บของ (ใช้ Logic ที่พี่ให้มา)
+-- ฟังก์ชัน Save ค่าใน UI ทั้งหมด
+local function SaveAllConfigs()
+    local data = {}
+    for i, v in pairs(_G.FluentOptions) do
+        if v.Type == "Toggle" or v.Type == "Slider" or v.Type == "Dropdown" or v.Type == "Input" then
+            data[i] = v.Value
+        end
+    end
+    writefile(MacroSystem.ConfigFile, HttpService:JSONEncode(data))
+end
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+_G.FluentOptions = Fluent.Options -- เก็บไว้ใช้ Auto Save
+
+-- [[ WINDOW SETUP ]]
+local Window = Fluent:CreateWindow({
+    Title = "Immortal Logic Hub",
+    SubTitle = "The Path to Immortality",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false, 
+    Theme = "Darker", 
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- [[ TABS DECLARATION ]]
+local Tabs = {
+    Menu = Window:AddTab({ Title = "Menu" }),
+    AutoJoin = Window:AddTab({ Title = "Auto Join" }),
+    Gameplay = Window:AddTab({ Title = "Gameplay" }),
+    Macro = Window:AddTab({ Title = "Macro Engine" }),
+    Webhook = Window:AddTab({ Title = "Webhook" }),
+    Settings = Window:AddTab({ Title = "Settings" })
+}
+
+---------------------------------------------------------
+-- 🏠 [MENU]
+---------------------------------------------------------
+Tabs.Menu:AddSection("Project Origin")
+Tabs.Menu:AddParagraph({
+    Title = "The Eternal Vision",
+    Content = "I noticed a lack of high-quality tools in the community. This led to the creation of Immortal Logic—built for precision, stability, and absolute performance."
+})
+
+Tabs.Menu:AddSection("Community Support")
+Tabs.Menu:AddButton({
+    Title = "Join Discord Community",
+    Description = "Access updates and exclusive features",
+    Callback = function()
+        setclipboard("https://discord.gg/gdPGTjtn")
+        Fluent:Notify({ Title = "Success", Content = "Discord link copied to clipboard!", Duration = 3 })
+    end
+})
+
+---------------------------------------------------------
+-- 🚪 [AUTO JOIN]
+---------------------------------------------------------
+Tabs.AutoJoin:AddSection("Coming Soon")
+Tabs.AutoJoin:AddParagraph({
+    Title = "Under Development",
+    Content = "The Advanced Server Joiner and Auto-Reconnection modules are currently being optimized for the next update."
+})
+
+---------------------------------------------------------
+-- 🎮 [GAMEPLAY]
+---------------------------------------------------------
+Tabs.Gameplay:AddSection("Match Management")
+Tabs.Gameplay:AddToggle("AutoStart", { Title = "Auto Start Match", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoReplay", { Title = "Auto Replay Stage", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoNext", { Title = "Auto Next Stage", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoLeave", { Title = "Auto Return to Lobby", Default = false, Callback = function() SaveAllConfigs() end })
+
+Tabs.Gameplay:AddSection("Combat System")
+Tabs.Gameplay:AddDropdown("SkillMode", {
+    Title = "Ability Activation Mode",
+    Values = {"Continuous Execution", "Boss Phase Only"},
+    Default = "Continuous Execution",
+    Callback = function() SaveAllConfigs() end
+})
+Tabs.Gameplay:AddToggle("AutoSkill", { Title = "Auto Skill System", Default = false, Callback = function() SaveAllConfigs() end })
+
+-- [[ 🤖 AUTO SKILL BRAIN ]]
 task.spawn(function()
     while true do
-        if autoCollect then
-            -- สแกนหาไอเทมตามที่พี่กำหนด
+        if Fluent.Options.AutoSkill and Fluent.Options.AutoSkill.Value then
+            pcall(function()
+                local towerFolder = workspace:FindFirstChild("placedTowers")
+                if towerFolder then
+                    for _, tower in ipairs(towerFolder:GetChildren()) do
+                        ReplicatedStorage.sync.sync_RELIABLE:FireServer(buffer.fromstring("\000+\000" .. tower.Name .. "\001\000"), {})
+                    end
+                end
+            end)
+        end
+        task.wait(0.5)
+    end
+end)
+
+Tabs.Gameplay:AddSection("Coming Soon")
+Tabs.Gameplay:AddParagraph({
+    Title = "Planned Features",
+    Content = "Additional automation modules and advanced combat logic are currently under development."
+})
+
+---------------------------------------------------------
+-- ⏺️ [MACRO ENGINE]
+---------------------------------------------------------
+Tabs.Macro:AddSection("Live Monitoring")
+local ActionLabel = Tabs.Macro:AddParagraph({ Title = "Action Counter", Content = "0 Actions Logged" })
+local TimeLabel = Tabs.Macro:AddParagraph({ Title = "Session Timer", Content = "00:00 Seconds" })
+
+-- [[ ⏺️ MACRO HOOK ]]
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if method == "FireServer" and MacroSystem.IsRecording and (self.Name == "sync_RELIABLE" or self.Name == "towers_RELIABLE") then
+        local now = tick()
+        local bufStr = typeof(args[1]) == "buffer" and buffer.tostring(args[1]) or tostring(args[1])
+        table.insert(MacroSystem.Data, {
+            Remote = self.Name, BufferStr = bufStr,
+            HasID = string.find(bufStr, "tower%-") ~= nil,
+            Extra = args[2] or {}, Delay = (#MacroSystem.Data == 0) and 0 or (now - MacroSystem.StartTime)
+        })
+        MacroSystem.StartTime = now
+        ActionLabel:SetTitle(#MacroSystem.Data .. " Actions Logged")
+    end
+    return OldNamecall(self, ...)
+end)
+
+Tabs.Macro:AddSection("Data Management")
+Tabs.Macro:AddInput("MacroNameInput", { Title = "Configuration Name", Placeholder = "Enter filename...", Callback = function() SaveAllConfigs() end })
+_G.MacroDropdown = Tabs.Macro:AddDropdown("MacroSelect", { Title = "Select Configuration", Values = {}, Callback = function() SaveAllConfigs() end })
+
+Tabs.Macro:AddButton({ 
+    Title = "Initialize New File", 
+    Callback = function() 
+        local name = Fluent.Options.MacroNameInput.Value
+        if name ~= "" then
+            writefile(MacroSystem.Folder .. "/" .. name .. ".json", HttpService:JSONEncode({}))
+            UpdateDropdown()
+            Fluent:Notify({Title = "Macro", Content = "สร้างไฟล์ใหม่สำเร็จ: " .. name})
+        end
+    end 
+})
+
+Tabs.Macro:AddSection("Execution Control")
+Tabs.Macro:AddToggle("RecordToggle", { 
+    Title = "Capture Mode", 
+    Description = "Record Macro Actions", 
+    Default = false, 
+    Callback = function(v) 
+        MacroSystem.IsRecording = v
+        if v then
+            table.clear(MacroSystem.Data)
+            MacroSystem.StartTime = tick()
+            task.spawn(function()
+                while MacroSystem.IsRecording do
+                    TimeLabel:SetTitle(string.format("%.2f Seconds", tick() - MacroSystem.StartTime))
+                    task.wait(0.1)
+                end
+            end)
+        else
+            local name = Fluent.Options.MacroNameInput.Value
+            if name ~= "" then
+                writefile(MacroSystem.Folder .. "/" .. name .. ".json", HttpService:JSONEncode(MacroSystem.Data))
+                UpdateDropdown()
+            end
+        end
+        SaveAllConfigs()
+    end 
+})
+
+Tabs.Macro:AddToggle("PlayToggle", { 
+    Title = "Playback System", 
+    Description = "Play Recorded Macro", 
+    Default = false, 
+    Callback = function(v) 
+        if v then
+            local name = Fluent.Options.MacroSelect.Value
+            if not name or not isfile(MacroSystem.Folder .. "/" .. name .. ".json") then 
+                Fluent.Options.PlayToggle:SetValue(false) return 
+            end
+            local data = HttpService:JSONDecode(readfile(MacroSystem.Folder .. "/" .. name .. ".json"))
+            MacroSystem.IsPlaying = true
+            for _, act in ipairs(data) do
+                if not Fluent.Options.PlayToggle.Value then break end
+                task.wait(act.Delay)
+                pcall(function()
+                    local finalStr = act.BufferStr
+                    local towers = workspace.placedTowers:GetChildren()
+                    local realID = #towers > 0 and towers[#towers].Name or nil
+                    if act.HasID and realID then finalStr = string.gsub(act.BufferStr, "tower%-[%w%-]+", realID) end
+                    ReplicatedStorage.sync[act.Remote]:FireServer(buffer.fromstring(finalStr), act.Extra)
+                end)
+            end
+            Fluent.Options.PlayToggle:SetValue(false)
+        end
+        SaveAllConfigs()
+    end 
+})
+
+Tabs.Macro:AddSection("Cleanup")
+Tabs.Macro:AddButton({ 
+    Title = "Purge Selected File", 
+    Callback = function() 
+        local name = Fluent.Options.MacroSelect.Value
+        if name then delfile(MacroSystem.Folder .. "/" .. name .. ".json") UpdateDropdown() end
+    end 
+})
+
+---------------------------------------------------------
+-- 🔔 [WEBHOOK]
+---------------------------------------------------------
+Tabs.Webhook:AddSection("Notifications")
+Tabs.Webhook:AddInput("WebhookURL", { Title = "Discord Webhook URL", Placeholder = "Enter URL here...", Callback = function() SaveAllConfigs() end })
+
+---------------------------------------------------------
+-- ⚙️ [SETTINGS]
+---------------------------------------------------------
+Tabs.Settings:AddSection("Performance Optimization")
+Tabs.Settings:AddToggle("BlackScreen", {
+    Title = "Black Screen Mode",
+    Description = "Reduce CPU and GPU usage",
+    Default = false,
+    Callback = function(v)
+        game:GetService("RunService"):Set3dRenderingEnabled(not v)
+        SaveAllConfigs()
+    end
+})
+Tabs.Settings:AddToggle("AutoRun", { Title = "Force Auto Run", Default = false, Callback = function() SaveAllConfigs() end })
+
+Tabs.Settings:AddSection("Configuration")
+Tabs.Settings:AddButton({ 
+    Title = "Save Current Config", 
+    Callback = function() 
+        SaveAllConfigs()
+        Fluent:Notify({Title = "Settings", Content = "Saved Successfully!"})
+    end 
+})
+Tabs.Settings:AddButton({ Title = "Unload Script", Callback = function() Window:Destroy() end })
+
+-- [[ 🚀 FINAL INITIALIZE ]]
+UpdateDropdown()
+if isfile(MacroSystem.ConfigFile) then
+    local success, data = pcall(function() return HttpService:JSONDecode(readfile(MacroSystem.ConfigFile)) end)
+    if success then
+        for i, v in pairs(data) do if Fluent.Options[i] then Fluent.Options[i]:SetValue(v) end end
+    end
+end
+Window:SelectTab(1)
             for _, v in pairs(game.Workspace:GetDescendants()) do
                 if not autoCollect then break end
                 
@@ -535,7 +776,284 @@ local function addPage(name)
         Page.Visible = true
         
         for _, b in pairs(TabBar:GetChildren()) do
-            if b:IsA("TextButton") then
+            if b:Islocal HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- [[ 🛠️ BACKEND LOGIC - ห้ามลบส่วนนี้เพื่อให้ระบบทำงานได้ ]] --
+local MacroSystem = {
+    IsRecording = false,
+    IsPlaying = false,
+    Data = {},
+    StartTime = 0,
+    Folder = "ImmortalLogic_Macros",
+    ConfigFile = "ImmortalLogic_Config.json"
+}
+
+if not isfolder(MacroSystem.Folder) then makefolder(MacroSystem.Folder) end
+
+-- ฟังก์ชันดึงรายชื่อไฟล์เข้า Dropdown
+local function UpdateDropdown()
+    local files = listfiles(MacroSystem.Folder)
+    local names = {}
+    for _, file in ipairs(files) do
+        table.insert(names, file:gsub(MacroSystem.Folder .. "/", ""):gsub(MacroSystem.Folder .. "\\", ""):gsub(".json", ""))
+    end
+    if _G.MacroDropdown then _G.MacroDropdown:SetValues(names) end
+end
+
+-- ฟังก์ชัน Save ค่าใน UI ทั้งหมด
+local function SaveAllConfigs()
+    local data = {}
+    for i, v in pairs(_G.FluentOptions) do
+        if v.Type == "Toggle" or v.Type == "Slider" or v.Type == "Dropdown" or v.Type == "Input" then
+            data[i] = v.Value
+        end
+    end
+    writefile(MacroSystem.ConfigFile, HttpService:JSONEncode(data))
+end
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+_G.FluentOptions = Fluent.Options -- เก็บไว้ใช้ Auto Save
+
+-- [[ WINDOW SETUP ]]
+local Window = Fluent:CreateWindow({
+    Title = "Immortal Logic Hub",
+    SubTitle = "The Path to Immortality",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false, 
+    Theme = "Darker", 
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- [[ TABS DECLARATION ]]
+local Tabs = {
+    Menu = Window:AddTab({ Title = "Menu" }),
+    AutoJoin = Window:AddTab({ Title = "Auto Join" }),
+    Gameplay = Window:AddTab({ Title = "Gameplay" }),
+    Macro = Window:AddTab({ Title = "Macro Engine" }),
+    Webhook = Window:AddTab({ Title = "Webhook" }),
+    Settings = Window:AddTab({ Title = "Settings" })
+}
+
+---------------------------------------------------------
+-- 🏠 [MENU]
+---------------------------------------------------------
+Tabs.Menu:AddSection("Project Origin")
+Tabs.Menu:AddParagraph({
+    Title = "The Eternal Vision",
+    Content = "I noticed a lack of high-quality tools in the community. This led to the creation of Immortal Logic—built for precision, stability, and absolute performance."
+})
+
+Tabs.Menu:AddSection("Community Support")
+Tabs.Menu:AddButton({
+    Title = "Join Discord Community",
+    Description = "Access updates and exclusive features",
+    Callback = function()
+        setclipboard("https://discord.gg/gdPGTjtn")
+        Fluent:Notify({ Title = "Success", Content = "Discord link copied to clipboard!", Duration = 3 })
+    end
+})
+
+---------------------------------------------------------
+-- 🚪 [AUTO JOIN]
+---------------------------------------------------------
+Tabs.AutoJoin:AddSection("Coming Soon")
+Tabs.AutoJoin:AddParagraph({
+    Title = "Under Development",
+    Content = "The Advanced Server Joiner and Auto-Reconnection modules are currently being optimized for the next update."
+})
+
+---------------------------------------------------------
+-- 🎮 [GAMEPLAY]
+---------------------------------------------------------
+Tabs.Gameplay:AddSection("Match Management")
+Tabs.Gameplay:AddToggle("AutoStart", { Title = "Auto Start Match", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoReplay", { Title = "Auto Replay Stage", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoNext", { Title = "Auto Next Stage", Default = false, Callback = function() SaveAllConfigs() end })
+Tabs.Gameplay:AddToggle("AutoLeave", { Title = "Auto Return to Lobby", Default = false, Callback = function() SaveAllConfigs() end })
+
+Tabs.Gameplay:AddSection("Combat System")
+Tabs.Gameplay:AddDropdown("SkillMode", {
+    Title = "Ability Activation Mode",
+    Values = {"Continuous Execution", "Boss Phase Only"},
+    Default = "Continuous Execution",
+    Callback = function() SaveAllConfigs() end
+})
+Tabs.Gameplay:AddToggle("AutoSkill", { Title = "Auto Skill System", Default = false, Callback = function() SaveAllConfigs() end })
+
+-- [[ 🤖 AUTO SKILL BRAIN ]]
+task.spawn(function()
+    while true do
+        if Fluent.Options.AutoSkill and Fluent.Options.AutoSkill.Value then
+            pcall(function()
+                local towerFolder = workspace:FindFirstChild("placedTowers")
+                if towerFolder then
+                    for _, tower in ipairs(towerFolder:GetChildren()) do
+                        ReplicatedStorage.sync.sync_RELIABLE:FireServer(buffer.fromstring("\000+\000" .. tower.Name .. "\001\000"), {})
+                    end
+                end
+            end)
+        end
+        task.wait(0.5)
+    end
+end)
+
+Tabs.Gameplay:AddSection("Coming Soon")
+Tabs.Gameplay:AddParagraph({
+    Title = "Planned Features",
+    Content = "Additional automation modules and advanced combat logic are currently under development."
+})
+
+---------------------------------------------------------
+-- ⏺️ [MACRO ENGINE]
+---------------------------------------------------------
+Tabs.Macro:AddSection("Live Monitoring")
+local ActionLabel = Tabs.Macro:AddParagraph({ Title = "Action Counter", Content = "0 Actions Logged" })
+local TimeLabel = Tabs.Macro:AddParagraph({ Title = "Session Timer", Content = "00:00 Seconds" })
+
+-- [[ ⏺️ MACRO HOOK ]]
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if method == "FireServer" and MacroSystem.IsRecording and (self.Name == "sync_RELIABLE" or self.Name == "towers_RELIABLE") then
+        local now = tick()
+        local bufStr = typeof(args[1]) == "buffer" and buffer.tostring(args[1]) or tostring(args[1])
+        table.insert(MacroSystem.Data, {
+            Remote = self.Name, BufferStr = bufStr,
+            HasID = string.find(bufStr, "tower%-") ~= nil,
+            Extra = args[2] or {}, Delay = (#MacroSystem.Data == 0) and 0 or (now - MacroSystem.StartTime)
+        })
+        MacroSystem.StartTime = now
+        ActionLabel:SetTitle(#MacroSystem.Data .. " Actions Logged")
+    end
+    return OldNamecall(self, ...)
+end)
+
+Tabs.Macro:AddSection("Data Management")
+Tabs.Macro:AddInput("MacroNameInput", { Title = "Configuration Name", Placeholder = "Enter filename...", Callback = function() SaveAllConfigs() end })
+_G.MacroDropdown = Tabs.Macro:AddDropdown("MacroSelect", { Title = "Select Configuration", Values = {}, Callback = function() SaveAllConfigs() end })
+
+Tabs.Macro:AddButton({ 
+    Title = "Initialize New File", 
+    Callback = function() 
+        local name = Fluent.Options.MacroNameInput.Value
+        if name ~= "" then
+            writefile(MacroSystem.Folder .. "/" .. name .. ".json", HttpService:JSONEncode({}))
+            UpdateDropdown()
+            Fluent:Notify({Title = "Macro", Content = "สร้างไฟล์ใหม่สำเร็จ: " .. name})
+        end
+    end 
+})
+
+Tabs.Macro:AddSection("Execution Control")
+Tabs.Macro:AddToggle("RecordToggle", { 
+    Title = "Capture Mode", 
+    Description = "Record Macro Actions", 
+    Default = false, 
+    Callback = function(v) 
+        MacroSystem.IsRecording = v
+        if v then
+            table.clear(MacroSystem.Data)
+            MacroSystem.StartTime = tick()
+            task.spawn(function()
+                while MacroSystem.IsRecording do
+                    TimeLabel:SetTitle(string.format("%.2f Seconds", tick() - MacroSystem.StartTime))
+                    task.wait(0.1)
+                end
+            end)
+        else
+            local name = Fluent.Options.MacroNameInput.Value
+            if name ~= "" then
+                writefile(MacroSystem.Folder .. "/" .. name .. ".json", HttpService:JSONEncode(MacroSystem.Data))
+                UpdateDropdown()
+            end
+        end
+        SaveAllConfigs()
+    end 
+})
+
+Tabs.Macro:AddToggle("PlayToggle", { 
+    Title = "Playback System", 
+    Description = "Play Recorded Macro", 
+    Default = false, 
+    Callback = function(v) 
+        if v then
+            local name = Fluent.Options.MacroSelect.Value
+            if not name or not isfile(MacroSystem.Folder .. "/" .. name .. ".json") then 
+                Fluent.Options.PlayToggle:SetValue(false) return 
+            end
+            local data = HttpService:JSONDecode(readfile(MacroSystem.Folder .. "/" .. name .. ".json"))
+            MacroSystem.IsPlaying = true
+            for _, act in ipairs(data) do
+                if not Fluent.Options.PlayToggle.Value then break end
+                task.wait(act.Delay)
+                pcall(function()
+                    local finalStr = act.BufferStr
+                    local towers = workspace.placedTowers:GetChildren()
+                    local realID = #towers > 0 and towers[#towers].Name or nil
+                    if act.HasID and realID then finalStr = string.gsub(act.BufferStr, "tower%-[%w%-]+", realID) end
+                    ReplicatedStorage.sync[act.Remote]:FireServer(buffer.fromstring(finalStr), act.Extra)
+                end)
+            end
+            Fluent.Options.PlayToggle:SetValue(false)
+        end
+        SaveAllConfigs()
+    end 
+})
+
+Tabs.Macro:AddSection("Cleanup")
+Tabs.Macro:AddButton({ 
+    Title = "Purge Selected File", 
+    Callback = function() 
+        local name = Fluent.Options.MacroSelect.Value
+        if name then delfile(MacroSystem.Folder .. "/" .. name .. ".json") UpdateDropdown() end
+    end 
+})
+
+---------------------------------------------------------
+-- 🔔 [WEBHOOK]
+---------------------------------------------------------
+Tabs.Webhook:AddSection("Notifications")
+Tabs.Webhook:AddInput("WebhookURL", { Title = "Discord Webhook URL", Placeholder = "Enter URL here...", Callback = function() SaveAllConfigs() end })
+
+---------------------------------------------------------
+-- ⚙️ [SETTINGS]
+---------------------------------------------------------
+Tabs.Settings:AddSection("Performance Optimization")
+Tabs.Settings:AddToggle("BlackScreen", {
+    Title = "Black Screen Mode",
+    Description = "Reduce CPU and GPU usage",
+    Default = false,
+    Callback = function(v)
+        game:GetService("RunService"):Set3dRenderingEnabled(not v)
+        SaveAllConfigs()
+    end
+})
+Tabs.Settings:AddToggle("AutoRun", { Title = "Force Auto Run", Default = false, Callback = function() SaveAllConfigs() end })
+
+Tabs.Settings:AddSection("Configuration")
+Tabs.Settings:AddButton({ 
+    Title = "Save Current Config", 
+    Callback = function() 
+        SaveAllConfigs()
+        Fluent:Notify({Title = "Settings", Content = "Saved Successfully!"})
+    end 
+})
+Tabs.Settings:AddButton({ Title = "Unload Script", Callback = function() Window:Destroy() end })
+
+-- [[ 🚀 FINAL INITIALIZE ]]
+UpdateDropdown()
+if isfile(MacroSystem.ConfigFile) then
+    local success, data = pcall(function() return HttpService:JSONDecode(readfile(MacroSystem.ConfigFile)) end)
+    if success then
+        for i, v in pairs(data) do if Fluent.Options[i] then Fluent.Options[i]:SetValue(v) end end
+    end
+end
+Window:SelectTab(1)
+A("TextButton") then
                 TweenService:Create(b, TweenInfo.new(0.1), {TextColor3 = Color3.fromRGB(130, 130, 130)}):Play()
                 TweenService:Create(b:FindFirstChild("Frame"), TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
             end
