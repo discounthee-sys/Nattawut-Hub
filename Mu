@@ -1,0 +1,45 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- [[ 🛠️ 1. GLOBAL CONFIG - ตัวแปรกลางไว้คุยกับ Logic ]]
+_G.NattawutConfig = {
+    AutoSkill = false,
+    IsRecording = false,
+    MacroData = {},
+    CurrentFile = "",
+    Folder = "NattawutHub_Macros"
+}
+
+-- [[ 🛠️ 2. WINDOW SETUP ]]
+local Window = Fluent:CreateWindow({
+    Title = "Nattawut Hub",
+    SubTitle = "Premium Edition | By Phi Lam",
+    TabWidth = 160, Size = UDim2.fromOffset(580, 460),
+    Acrylic = false, Theme = "Darker", MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+local Tabs = {
+    Gameplay = Window:AddTab({ Title = "Gameplay" }),
+    Macro = Window:AddTab({ Title = "Macro Engine" }),
+    Settings = Window:AddTab({ Title = "Settings" })
+}
+
+-- [[ 🎮 GAMEPLAY TAB ]]
+Tabs.Gameplay:AddToggle("AutoSkill", {
+    Title = "Auto Skill System",
+    Default = false,
+    Callback = function(v) _G.NattawutConfig.AutoSkill = v end
+})
+
+-- [[ ⏺️ MACRO TAB (โครง UI)]]
+Tabs.Macro:AddSection("Monitoring")
+_G.ActionLabel = Tabs.Macro:AddParagraph({ Title = "Action Counter", Content = "0 Actions Logged" })
+
+Tabs.Macro:AddInput("MacroName", { Title = "File Name", Placeholder = "Enter...", Callback = function(v) _G.NattawutConfig.CurrentFile = v end })
+
+Tabs.Macro:AddToggle("RecordBtn", { Title = "Capture Mode", Callback = function(v) _G.NattawutConfig.IsRecording = v end })
+
+-- [[ 🚀 3. บรรทัดเชื่อมต่อ (Logic) ]]
+-- ผมจะสั่งให้มันโหลด "สมอง" จากไฟล์ logic.lua ที่พี่กำลังจะสร้างครับ
+loadstring(game:HttpGet("https://raw.githubusercontent.com/discounthee-sys/Nattawut-Hub/main/logic.lua"))()
+
+Window:SelectTab(1)
