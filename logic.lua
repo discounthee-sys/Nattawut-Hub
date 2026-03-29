@@ -1,12 +1,10 @@
 -- [[ NATTAWUT HUB : THE BRAIN ENGINE ]]
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Config = _G.NattawutHub.Config
 local Data = _G.NattawutHub.Data
 
--- สร้างโฟลเดอร์เก็บมาโครถ้ายังไม่มี
 if not isfolder(Config.Folder) then makefolder(Config.Folder) end
 
 -- [[ 🎮 1. AUTO SKILL SYSTEM ]]
@@ -23,7 +21,7 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(0.5) -- ปรับดีเลย์ตามความเหมาะสม
+        task.wait(0.5)
     end
 end)
 
@@ -35,7 +33,6 @@ OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local args = {...}
     
     if method == "FireServer" and Config.IsRecording then
-        -- ดักจับเฉพาะ Remote ที่เกี่ยวกับการวางและสกิล
         if self.Name == "sync_RELIABLE" or self.Name == "towers_RELIABLE" then
             local now = tick()
             table.insert(Data.MacroData, {
@@ -45,7 +42,7 @@ OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             })
             StartTime = now
             
-            -- อัปเดตตัวเลขใน UI
+            -- อัปเดตตัวเลขใน UI (อ้างอิงจากตัวแปรใน ui.lua)
             if _G.NattawutHub.ActionLabel then
                 pcall(function() _G.NattawutHub.ActionLabel:SetTitle(#Data.MacroData .. " Actions Logged") end)
             end
@@ -58,7 +55,6 @@ end)
 task.spawn(function()
     while true do
         if Config.IsPlaying then
-            -- สมมติว่าเลือกไฟล์จาก Dropdown แล้ว (พี่ต้องเพิ่มระบบเซฟ/โหลดไฟล์ใน ui.lua)
             if #Data.MacroData > 0 then
                 for _, act in ipairs(Data.MacroData) do
                     if not Config.IsPlaying then break end
@@ -68,11 +64,12 @@ task.spawn(function()
                     end)
                 end
             end
-            Config.IsPlaying = false -- เล่นจบแล้วปิด Toggle
+            -- เล่นจบแล้วปิด Toggle ใน UI (ถ้ามีอ้างอิง)
+            Config.IsPlaying = false 
         end
         task.wait(0.1)
     end
 end)
 
-print("🧠 Logic Engine: Connected and Listening to UI!")
+print("🧠 Logic Engine: Ready!")
 return true
